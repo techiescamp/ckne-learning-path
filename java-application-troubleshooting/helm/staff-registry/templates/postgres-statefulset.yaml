@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "staff-registry.postgresName" . }}
+  labels:
+    {{- include "staff-registry.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "staff-registry.postgresServiceName" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "staff-registry.postgresName" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "staff-registry.postgresName" . }}
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          ports:
+            - containerPort: {{ .Values.postgres.port }}
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-postgres-secret
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}

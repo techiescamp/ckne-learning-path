@@ -1,0 +1,45 @@
+# ── Application ──────────────────────────────────────────────
+app:
+  image:
+    repository: devopscube/staff-registry
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 8080
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# ── Service ───────────────────────────────────────────────────
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+# ── Probes ────────────────────────────────────────────────────
+# Off by default. The readiness check of this app also talks to the database.
+# With a slow database the Pod would turn NotReady and the Service would lose its
+# endpoint, so requests would fail instead of being slow.
+probes:
+  enabled: false
+
+# ── PostgreSQL ────────────────────────────────────────────────
+postgres:
+  image:
+    repository: postgres
+    tag: "17-alpine"
+  database: staffdb
+  username: postgres
+  password: postgres123
+  port: 5432
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
