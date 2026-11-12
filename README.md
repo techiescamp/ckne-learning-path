@@ -186,9 +186,6 @@ cilium install \
   --set ipam.operator.clusterPoolIPv4MaskSize=24
 ```
 
-> [!WARNING]
-> Never edit the existing entries in `clusterPoolIPv4PodCIDRList`. If you need more addresses, append new CIDRs to the list instead. Also, `clusterPoolIPv4MaskSize` cannot be changed after install, so choose it carefully up front.
-
 ### Using Linux tools for packet-level issues
 > tcpdump : In the exam, capture only what the task asks for, such as the interface, port, packet count and output file. Always add `-nn`. Then tcpdump shows plain IPs and ports and does not slow down on DNS lookups.
 
