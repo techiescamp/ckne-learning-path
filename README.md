@@ -102,8 +102,6 @@ The same code, **40KUBE26CT**, also saves you up to 47% on the following bundles
 
 > **Source:** [CNCF CKNE Curriculum](https://github.com/cncf/curriculum/blob/main/CKNE_Curriculum.pdf)
 
-The domains build on each other, so study them in the order shown below. Every later topic needs a working CNI. That is why week 1 is spent building a Cilium cluster.
-
 | Week | Domain | Weight | Study Notes | What you should be able to do at the end |
 |:----:|--------|:------:|:-----------:|-------------------------------------------|
 | 1 | Core Infrastructure and CNI | **15%** | [Notes](./study-notes/01-core-infrastructure-cni.md) | Install Cilium with kube-proxy replacement and BPF masquerading, add extra pod interfaces with Multus, and debug pod-to-pod traffic and DNS using `ip`, `iptables` and `tcpdump` |
