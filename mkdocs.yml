@@ -1,0 +1,35 @@
+site_name: CKNE Learning Path 2026
+site_description: Hands-on Certified Kubernetes Network Engineer (CKNE) learning path covering Cilium, Gateway API, Istio ambient, BGP, Cluster Mesh and network observability.
+site_url: https://techiescamp.github.io/ckne-learning-path
+repo_url: https://github.com/techiescamp/ckne-learning-path
+repo_name: techiescamp/ckne-learning-path
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+
+plugins:
+  - search
+
+nav:
+  - Home: README.md
+  - Study Notes:
+      - "Core Infrastructure & CNI (15%)": study-notes/01-core-infrastructure-cni.md
+      - "Service Networking & DNS (25%)": study-notes/02-service-networking-dns.md
+      - "Advanced Traffic Management (20%)": study-notes/03-advanced-traffic-management.md
+      - "Network Security & Policy (25%)": study-notes/04-network-security-policy.md
+      - "Observability (15%)": study-notes/05-observability.md
+  - Practice Tasks: PRACTICE_QUESTIONS.md
+  - Cheatsheet: CHEATSHEET.md
+  - Exam Guide: EXAM_GUIDE.md
+  - Contributing: CONTRIBUTING.md

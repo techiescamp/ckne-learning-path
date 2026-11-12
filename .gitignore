@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+._*
+
+# Lab artifacts
+*.pcap
+*.key
+*.crt
+istio-*/
+site/
+
+.claude/
