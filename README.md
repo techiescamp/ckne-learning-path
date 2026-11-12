@@ -14,6 +14,8 @@ If you plan to use this repo as a reference, please hit the star so that others 
 
 ---
 
+<a id="exam-coupon"></a>
+
 ## CKNE Exam Coupon (40% Off Exclusive Discount)
 
 You can save a flat 40% on CKNE exam registration by using the following coupon code.
@@ -915,24 +917,23 @@ kubectl -n istio-system logs -l app=ztunnel | grep -iE "policy rejection|denied"
 
 <br>
 
-### What to Expect
+### Quick Checks (save time)
 
-- The Prometheus, Hubble and Jaeger UIs are already running, so you only need to use them to find problems.
-- Most tasks give you a `curl` or `openssl` command to check your work. Run it before your change to see the failure, and run it again after to confirm the fix.
-- Each task has a Quick Reference box with doc links. Open those links instead of searching.
-- There is an on-screen scratchpad. Use it to sketch the traffic path before you start a task with several hops.
-- You can take a few short breaks, but the timer keeps running, so take them between tasks.
-- The remote desktop can be slow and copy/paste sometimes fails, so practice typing common commands and short YAML from memory.
+```bash
+cilium status --wait
+kubectl get svc,endpointslices -n <ns>
+kubectl get gatewayclass,gateway,httproute -A
+hubble observe -n <ns> --verdict DROPPED
+kubectl -n kube-system logs -l k8s-app=kube-dns
+kubectl run t --rm -it --image=nicolaka/netshoot --restart=Never -- bash
+```
 
-### Per-task Workflow
+### Dry-run → Edit → Apply (for longer YAML)
 
-```text
-1. ssh <designated-host>
-2. Read the task and note every name, namespace, port, IP and file path
-3. Run the provided check and see it fail
-4. Fix or build, using the linked docs
-5. Run the provided check again and see it pass
-6. exit
+```bash
+kubectl create service clusterip web --tcp=80:8080 --dry-run=client -o yaml > svc.yaml
+vim svc.yaml
+kubectl apply -f svc.yaml
 ```
 
 ### Common Traps
@@ -943,7 +944,18 @@ kubectl -n istio-system logs -l app=ztunnel | grep -iE "policy rejection|denied"
 | A default-deny policy breaks DNS | Also allow UDP and TCP port 53 to `kube-dns` |
 | A Cilium change does not take effect | Restart the Cilium agents and the operator after the change |
 | A Gateway test does not match the route | Use `curl --resolve` or set the `Host` header |
+| An L7 policy does nothing | In Cilium, add `rules.http`. In Istio ambient, add a waypoint and use `targetRefs` |
 | tcpdump hangs | Add `-nn`, and add `-c <count>` when the task asks for a count |
+| A Corefile edit is ignored | Check the CoreDNS logs right after the edit for a syntax error |
+
+### Last-Minute Checklist
+
+- [ ] Review the NetworkPolicy and CiliumNetworkPolicy YAML syntax
+- [ ] Practice a CoreDNS forward and a stub domain
+- [ ] Build a Gateway with an HTTPRoute and a TLS listener
+- [ ] Set up BGP peering and an egress gateway from memory
+- [ ] Write an Istio ambient AuthorizationPolicy with and without a waypoint
+- [ ] Run the common Hubble filters and PromQL queries
 
 > 📄 Full guide: [EXAM_GUIDE.md](./EXAM_GUIDE.md)
 
@@ -1016,30 +1028,6 @@ A: You need 67% to pass, and the results are emailed to you within 24 hours.
 
 A: The exam environment runs Kubernetes v1.37.
 
-**Q: Which tools are used in the CKNE exam?**
-
-A: The official list is Istio, Cilium, Envoy, Gateway API, Hubble, Prometheus, Helm, Jaeger and cert-manager. You should also know CoreDNS and basic Linux tools such as `ip`, `iptables` and `tcpdump`.
-
-**Q: Is the CKNE only about Cilium?**
-
-A: No. Cilium is the main CNI, but tasks also cover Istio ambient mode, Envoy Gateway, the Gateway API, CoreDNS, MetalLB, kube-router and plain Linux networking.
-
-**Q: Which Istio mode should I study, sidecar or ambient?**
-
-A: Focus on ambient mode, with ztunnel for L4 and waypoints for L7, because the exam tasks are built around it.
-
-**Q: How hard is the CKNE compared to the CKA?**
-
-A: Most people find it harder, because it goes deeper into networking and uses more tools. Each task can involve several components, such as a Gateway, a policy and a Service, so you need to debug the whole path.
-
-**Q: Can I use documentation during the exam?**
-
-A: Yes. You can open the documentation sites listed in the official Resources Allowed page, and each task also links to the docs it needs.
-
-**Q: Do I have to install Prometheus, Hubble or Jaeger?**
-
-A: No. They are already running, and you use them to find problems through queries, flow filters and traces.
-
 **Q: How long does it take to prepare for the CKNE?**
 
 A: If you already know Kubernetes well, plan for about 6 weeks of steady hands-on practice. The learning path above follows that plan.
@@ -1052,13 +1040,9 @@ A: Yes, one retake is included. You must take the exam within 12 months of purch
 
 A: It is valid for 2 years from the date you pass.
 
-**Q: Is there a practice exam simulator?**
-
-A: Yes. Registration includes two Killer.sh sessions, and each one gives you 36 hours of access.
-
 **Q: How much does the CKNE exam cost?**
 
-A: Prices and discounts change, so check the official certification page below for the current price.
+A: The price can change, so check the official certification page below for the current amount. To save on registration, use the discount code in the [exam coupon section](#exam-coupon) at the top of this page.
 
 </details>
 
