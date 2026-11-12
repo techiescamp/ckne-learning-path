@@ -33,10 +33,10 @@ Use code **40KUBE26CT** to save up to 47% on the following bundles:
 
 | Item | Detail |
 |------|--------|
-| **Format** | Online, proctored, performance-based tasks in a Linux remote desktop (terminal + web UIs) |
+| **Format** | Online, proctored, performance-based tasks in a Linux remote desktop |
 | **Duration** | 2 hours |
 | **Passing Score** | 67% |
-| **Kubernetes Version** | v1.37 (tracks the latest minor release within ~4–8 weeks) |
+| **Kubernetes Version** | v1.37 |
 | **Results** | Emailed within 24 hours |
 | **Retake** | One retake included |
 | **Eligibility** | 12 months from purchase |
@@ -60,7 +60,7 @@ Use code **40KUBE26CT** to save up to 47% on the following bundles:
 > [!TIP]
 > **Service Networking (25%)** and **Network Security (25%)** together make up half the exam. Troubleshooting runs through every domain, so for each feature you build, also practise breaking it and fixing it.
 
-### Official Competencies per Domain
+### Official Weightage per Domain
 
 <details>
 <summary><strong>1. Core Infrastructure and CNI (15%)</strong></summary>
