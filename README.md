@@ -18,7 +18,7 @@ If you plan to use this repo as a reference, please hit the star. Thanks!
 
 To save a flat 40% on CKNE exam registration, use the following coupon code.
 > [!IMPORTANT]
-> **Coupon:** Use code **40KUBE26CT** at [kube.promo/cka](https://kube.promo/recommends/ckne/)
+> **Coupon:** Use code **40KUBE26CT** at [kube.promo/ckne](https://kube.promo/recommends/ckne/)
 
 Use code **40KUBE26CT** to save up to 47% on the following bundles:
 
