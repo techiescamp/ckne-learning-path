@@ -4,13 +4,6 @@
 
 **How to use:** Read each task carefully and write down every exact value it gives you, such as names, namespaces, ports, paths and counts, because the exam checks those values precisely. Then solve the task and compare your work with the solution. If you get a task wrong, rebuild it from scratch the next day so the fix sticks.
 
-| Solved | Readiness |
-|--------|-----------|
-| 17–20 | You are exam-ready 🟢 |
-| 13–16 | You are almost there 🟡 |
-| 9–12 | You need more practice 🟠 |
-| < 9 | Go back to the study notes 🔴 |
-
 ---
 
 ## Domain 1: Core Infrastructure and CNI
@@ -171,7 +164,7 @@ In namespace `inference`, the model-server pods are labelled `app=vllm-llama` an
 ```bash
 kubectl explain inferencepool.spec
 ```
-First create the InferencePool with `selector.matchLabels.app: vllm-llama`, `targetPorts: [{number: 8000}]` and `endpointPickerRef: {name: llama-epp, port: {number: 9002}}`. Next, create an HTTPRoute that matches `method: POST` and `PathPrefix /v1/completions`, and whose backendRef points to the pool with `group: inference.networking.k8s.io`, `kind: InferencePool` and `name: llama-pool`. Finally, check that the route shows `ResolvedRefs=True`, and send a test completion to confirm that it works end to end.
+First, create the InferencePool with `selector.matchLabels.app: vllm-llama`, `targetPorts: [{number: 8000}]` and `endpointPickerRef: {name: llama-epp, port: {number: 9002}}`. Next, create an HTTPRoute that matches `method: POST` and `PathPrefix /v1/completions`. Its backendRef points to the pool with `group: inference.networking.k8s.io`, `kind: InferencePool` and `name: llama-pool`. Finally, check that the route shows `ResolvedRefs=True`. Then send a test completion to confirm it works end to end.
 </details>
 
 ### Task 11: BGP peering
@@ -180,7 +173,13 @@ Nodes labelled `bgp=enabled` must use ASN 65001 to peer with router `172.18.0.10
 
 <details><summary>Solution</summary>
 
-Start by enabling `bgpControlPlane.enabled=true`. Then create three resources: a `CiliumBGPClusterConfig` (nodeSelector `bgp=enabled`, localASN 65001, peer 172.18.0.100 / 65000), a `CiliumBGPPeerConfig` that selects advertisements by label, and a `CiliumBGPAdvertisement` with `PodCIDR` and `Service` → `LoadBalancerIP`. Keep in mind that a Service advertisement only covers the Services that match its `selector`. So, to advertise all of them, add `matchExpressions: [{key: bgp-exclude, operator: DoesNotExist}]` (or a `NotIn` with a value that is never used), which every Service matches.
+Start by enabling `bgpControlPlane.enabled=true`. Then create three resources:
+
+- A `CiliumBGPClusterConfig` with nodeSelector `bgp=enabled`, localASN 65001, and peer 172.18.0.100 with ASN 65000.
+- A `CiliumBGPPeerConfig` whose address family selects advertisements by label. Without a matching advertisement, nothing is sent to the peer.
+- A `CiliumBGPAdvertisement` (with that label) that has two entries: `PodCIDR`, and `Service` with `addresses: [LoadBalancerIP]`.
+
+A Service advertisement only covers the Services that match its `selector`. So, to advertise all of them, use the pattern from the Cilium docs: `matchExpressions: [{key: somekey, operator: NotIn, values: [never-used-value]}]`. Every Service matches it.
 ```bash
 cilium bgp peers
 cilium bgp routes advertised ipv4 unicast
@@ -196,7 +195,7 @@ Pods with `app=billing` in namespace `payments` call `203.0.113.0/24`. However, 
 ```bash
 kubectl label node worker-3 egress-gw=true
 ```
-Make sure that `egressGateway.enabled`, `bpf.masquerade` and `kubeProxyReplacement` are all turned on, because the egress gateway needs them. Then create a `CiliumEgressGatewayPolicy` that selects `app=billing` + `io.kubernetes.pod.namespace=payments`, with `destinationCIDRs: [203.0.113.0/24]`, `nodeSelector egress-gw=true` and `egressIP: 172.18.0.50`.
+Make sure that `egressGateway.enabled`, `bpf.masquerade` and `kubeProxyReplacement` are all turned on, because the egress gateway needs all three. If you change any of them, restart the `cilium` DaemonSet and the `cilium-operator` Deployment. Then create a `CiliumEgressGatewayPolicy` that selects `app=billing` + `io.kubernetes.pod.namespace=payments`, with `destinationCIDRs: [203.0.113.0/24]`, `nodeSelector egress-gw=true` and `egressIP: 172.18.0.50`.
 ```bash
 kubectl -n kube-system exec ds/cilium -- cilium-dbg bpf egress list
 ```
@@ -221,7 +220,14 @@ In namespace `shop`, deny all ingress and egress traffic by default. Then allow 
 
 <details><summary>Solution</summary>
 
-You need four NetworkPolicies. First, create a default-deny policy (`podSelector: {}` with both policyTypes). Second, because the default deny also blocks name lookups, add an egress policy that lets all pods reach `kube-system`/`k8s-app=kube-dns` on UDP+TCP 53. Third, add an ingress policy on `api` that allows `app=frontend` on 8080. Fourth, add an egress policy on `frontend` that allows traffic to `app=api` on 8080, since both sides of the connection must be allowed. Finally, test both a path that should work and one that should be denied.
+You need four NetworkPolicies:
+
+1. A default-deny policy: `podSelector: {}` with both policyTypes.
+2. An egress policy that lets all pods reach `kube-system`/`k8s-app=kube-dns` on UDP+TCP 53. You need this because the default deny also blocks name lookups.
+3. An ingress policy on `api` that allows `app=frontend` on 8080.
+4. An egress policy on `frontend` that allows traffic to `app=api` on 8080. Both sides of the connection must be allowed, so you need this one too.
+
+Finally, test a path that should work and a path that should be denied.
 </details>
 
 ### Task 15: L7 allow-list
@@ -258,9 +264,10 @@ The certificate and key are at `/opt/certs/shop.crt` and `/opt/certs/shop.key`. 
 ```bash
 kubectl -n web create secret tls shop-tls --cert=/opt/certs/shop.crt --key=/opt/certs/shop.key
 ```
-Next, add an `HTTPS` listener to the Gateway (port 443, hostname `shop.example.com`, `tls.mode: Terminate`, `certificateRefs: [{name: shop-tls}]`), and attach the HTTPRoute to that listener with `sectionName`. Then test it:
+Next, add an `HTTPS` listener to the Gateway (port 443, hostname `shop.example.com`, `tls.mode: Terminate`, `certificateRefs: [{name: shop-tls}]`), and attach the HTTPRoute to that listener with `sectionName`. Then test it. The `-k` flag skips certificate verification, so the test works even if the certificate is not signed by a CA your machine trusts. The `openssl` command shows which certificate the Gateway serves:
 ```bash
-curl -v --cacert /opt/certs/shop.crt --resolve shop.example.com:443:$GW_IP https://shop.example.com/
+curl -vk --resolve shop.example.com:443:$GW_IP https://shop.example.com/
+openssl s_client -connect $GW_IP:443 -servername shop.example.com </dev/null | openssl x509 -noout -subject -dates
 ```
 </details>
 

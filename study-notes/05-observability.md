@@ -2,7 +2,7 @@
 
 > **Exam Weight: 15%**: This domain tests whether you can judge network health from metrics, follow end-to-end performance through traces, and audit traffic using logs.
 
-Observability tasks rarely ask you to install anything. Instead, they give you a broken or misbehaving system and ask you to find *where* traffic fails, *which* backend is unhealthy, or *who* is sending bad requests. Because of this, practise reading the Hubble, Prometheus and Jaeger UIs as well as using their CLIs.
+Observability tasks rarely ask you to install anything. Instead, they give you a broken system and ask you to find *where* traffic fails, *which* backend is unhealthy, or *who* is sending bad requests. So practise reading the Hubble, Prometheus and Jaeger UIs, and not only their CLIs.
 
 ## Index
 
@@ -17,7 +17,7 @@ Observability tasks rarely ask you to install anything. Instead, they give you a
 
 ## 1. Hubble: Network Flows
 
-Hubble records every flow that Cilium handles. For each flow it shows the source and destination identity, the verdict (`FORWARDED`, `DROPPED` or `AUDIT`) and the drop reason. When the traffic passes through an L7 proxy, Hubble also records the HTTP or DNS details.
+Hubble records the flows that Cilium handles. For each flow it shows the source and destination identity, the verdict (such as `FORWARDED`, `DROPPED` or `AUDIT`) and, for drops, the drop reason. When traffic passes through Cilium's L7 proxy, Hubble also records the HTTP or DNS details.
 
 ### Enable and connect
 
@@ -56,7 +56,7 @@ hubble observe --type policy-verdict
 hubble observe --tcp-flags RST
 ```
 
-The default output shows the readable drop reason, while the `-o json` pipeline above prints the enum name instead. The table below lists both forms, together with the usual cause of each drop.
+The default output shows the readable drop reason. The `-o json` pipeline above prints the enum name instead. The table lists both forms and the usual cause of each drop.
 
 | Drop reason (enum in JSON) | Typical cause |
 |----------------------------|---------------|
@@ -67,9 +67,9 @@ The default output shows the readable drop reason, while the `-o json` pipeline 
 | `Service backend not found` (`SERVICE_BACKEND_NOT_FOUND`) | The Service has no ready endpoints |
 
 > [!TIP]
-> L7 fields such as the HTTP method, path and status only appear when traffic passes through Cilium's proxy, for example when an L7 policy applies to it. Otherwise, you only see L3/L4 flows.
+> L7 fields such as the HTTP method, path and status only appear when traffic goes through Cilium's proxy. That happens, for example, when an L7 policy applies to it. Otherwise you only see L3/L4 flows.
 
-**Hubble UI:** Once you pick a namespace, the service map shows the edges between its workloads. Dropped flows in the flow table point directly at the broken hop, and when you click a flow you can see its identity, labels and drop reason.
+**Hubble UI:** Pick a namespace, and the service map shows the edges between its workloads. Dropped flows in the flow table point straight at the broken hop. Click a flow to see its identity, labels and drop reason.
 
 Reference: [Hubble Observability](https://docs.cilium.io/en/stable/observability/hubble/)
 
@@ -77,7 +77,7 @@ Reference: [Hubble Observability](https://docs.cilium.io/en/stable/observability
 
 ## 2. Prometheus: Network Health Metrics
 
-You can query Prometheus from its UI (the Graph tab) or `curl` the API directly. Start broad by finding which service is affected, and then narrow it down to the backend and finally the pod.
+You can query Prometheus from its UI (the Graph tab) or `curl` the API directly. Start broad and find which service is affected. Then narrow it down to the backend, and then to the pod.
 
 ```bash
 curl -s 'http://<prometheus>:9090/api/v1/query' --data-urlencode 'query=up == 0' | jq '.data.result[].metric'
@@ -117,14 +117,14 @@ sum by (rcode) (rate(coredns_dns_responses_total{rcode=~"SERVFAIL|NXDOMAIN"}[5m]
 increase(kube_pod_container_status_restarts_total[15m]) > 0
 ```
 
-Exact metric and label names depend on which exporters are installed, so a query from these notes may return nothing on your cluster. Before writing a query, use the metrics explorer (or `{__name__=~"hubble.*"}`) to see which metrics actually exist.
+Exact metric and label names depend on which exporters are installed. So a query from these notes may return nothing on your cluster. Before you write a query, use the metrics explorer (or `{__name__=~"hubble.*"}`) to see which metrics exist.
 
 ### Identifying a problematic backend
 
 1. Find the service that shows errors or high latency by grouping with `sum by (destination_service)`.
-2. Split that service's traffic by workload with `sum by (destination_workload)`. If your scrape config adds a `pod` label, you can instead split `by (pod)` with `reporter="destination"`.
-3. Compare each pod against the others. If a single pod stands out, the cause is usually a bad pod, node or probe. If all pods are bad, the cause is more likely a dependency, policy or config that they share.
-4. Confirm your finding with `kubectl get endpointslices`, the pod logs and the Hubble flows to that pod.
+2. Split that service's traffic by workload with `sum by (destination_workload)`. If your scrape config adds a `pod` label, you can split `by (pod)` with `reporter="destination"` instead.
+3. Compare the pods with each other. If one pod stands out, the cause is usually a bad pod, node or probe. If all pods are bad, the cause is more likely something they share, such as a dependency, policy or config.
+4. Confirm what you found with `kubectl get endpointslices`, the pod logs and the Hubble flows to that pod.
 
 Reference: [PromQL Basics](https://prometheus.io/docs/prometheus/latest/querying/basics/) | [Istio Standard Metrics](https://istio.io/latest/docs/reference/config/metrics/)
 
@@ -132,7 +132,7 @@ Reference: [PromQL Basics](https://prometheus.io/docs/prometheus/latest/querying
 
 ## 3. Jaeger: End-to-end Tracing
 
-A trace is a tree of **spans**, with one span for each hop (gateway → waypoint → service A → service B). Each span records its duration, tags such as the HTTP status, peer address and upstream cluster, and the trace ID that ties all the spans of one request together.
+A trace is a tree of **spans**, with one span for each hop (gateway → waypoint → service A → service B). Each span records its duration and some tags, such as the HTTP status, peer address and upstream cluster. It also carries the trace ID, which ties together all the spans of one request.
 
 ### How traces reach Jaeger (Istio)
 
@@ -158,14 +158,14 @@ spec:
     randomSamplingPercentage: 100
 ```
 
-In ambient mode, spans come from **waypoints** and gateways, which work at L7, and not from ztunnel. In addition, applications must propagate the trace headers (`traceparent`, `x-b3-*`) on their outgoing calls; otherwise, a trace cannot span multiple services.
+In ambient mode, spans come from **waypoints** and gateways, because they work at L7. ztunnel works only at L4, so it does not create spans. Applications must also pass the trace headers (`traceparent`, `x-b3-*`) on to their outgoing calls. If they do not, a trace cannot cover more than one service.
 
 ### Reading a trace to find the slow hop
 
-1. In the Jaeger UI, set **Service** to the entry point (the gateway) and click **Find Traces**. Then sort by **Longest First**, or filter with `Min Duration` or with tags such as `http.status_code=503` or `error=true`.
-2. Open a trace, and the timeline shows which span takes the time. If a parent span is long while its children are short, the time is being spent **in** that service rather than downstream.
-3. Look for gaps between spans, which point to network or queueing delay, repeated child spans, which point to retries, and any spans with `error=true`.
-4. Check the span tags (`upstream_cluster`, `peer.address`, `node_id`) to identify the exact pod or node, and then confirm it with metrics or `tcpdump`. For example, if one node has network delay, only the spans to pods on that node are slow (see `tc netem` in Domain 1).
+1. In the Jaeger UI, set **Service** to the entry point (the gateway) and click **Find Traces**. Then sort by **Longest First**. You can also filter with `Min Duration` or with tags such as `http.status_code=503` or `error=true`.
+2. Open a trace. The timeline shows which span takes the time. If a parent span is long but its children are short, the time is spent **in** that service and not downstream.
+3. Look for three things. Gaps between spans point to network or queueing delay. Repeated child spans point to retries. And spans with `error=true` show where requests failed.
+4. Check the span tags (`upstream_cluster`, `peer.address`, `node_id`) to find the exact pod or node. Then confirm it with metrics or `tcpdump`. For example, if one node has network delay, only the spans to pods on that node are slow (see `tc netem` in Domain 1).
 
 Reference: [Istio Distributed Tracing](https://istio.io/latest/docs/tasks/observability/distributed-tracing/) | [Jaeger Documentation](https://www.jaegertracing.io/docs/latest/)
 
@@ -175,7 +175,7 @@ Reference: [Istio Distributed Tracing](https://istio.io/latest/docs/tasks/observ
 
 ### Envoy Gateway: data-plane access logs
 
-Envoy Gateway runs one Envoy Deployment for each Gateway in the `envoy-gateway-system` namespace. Access logs are on by default and are written as JSON to the `envoy` container, so you can read them with the commands below.
+By default, Envoy Gateway runs one Envoy Deployment for each Gateway, in the `envoy-gateway-system` namespace. Access logs are on by default. They are written as JSON to the stdout of the `envoy` container, so you can read them with `kubectl logs`:
 
 ```bash
 # Envoy proxy pods for a given Gateway
@@ -188,7 +188,7 @@ kubectl -n envoy-gateway-system logs -l gateway.envoyproxy.io/owning-gateway-nam
 kubectl -n envoy-gateway-system logs deploy/envoy-gateway
 ```
 
-The default log format already includes the fields you need most often: `x-envoy-origin-path`, `method`, `response_code`, `response_flags`, `user-agent`, `x-forwarded-for`, `downstream_remote_address`, `upstream_host`, `duration`.
+The default JSON format already includes the fields you need most often: `x-envoy-origin-path`, `method`, `response_code`, `response_flags`, `user-agent`, `x-forwarded-for`, `downstream_remote_address`, `upstream_host` and `duration`.
 
 ### Finding who is sending bad traffic to a path
 
@@ -211,13 +211,13 @@ echo "$LOGS" | grep '/api/login' | grep -o '"user-agent":"[^"]*"' | sort | uniq 
 
 | Flag | Meaning |
 |------|---------|
-| `UH` | There are no healthy upstream hosts |
-| `UF` | The connection to the upstream failed |
-| `URX` | All retry or connect attempts were used up |
-| `UT` | The upstream request timed out |
-| `NR` | No route is configured, because the route or host match failed |
-| `UAEX` | External authorization denied the request |
-| `RL` | The request was rate limited |
+| `UH` | There are no healthy upstream hosts (with a 503) |
+| `UF` | The connection to the upstream failed (with a 503) |
+| `URX` | The upstream retry limit (HTTP) or the maximum connect attempts (TCP) was reached |
+| `UT` | The upstream request timed out (with a 504) |
+| `NR` | No route is configured for the request (with a 404) |
+| `UAEX` | The external authorization service denied the request |
+| `RL` | The request was rate limited locally (with a 429) |
 | `DC` | The downstream client closed the connection |
 
 ### Other logs that matter
@@ -230,13 +230,13 @@ echo "$LOGS" | grep '/api/login' | grep -o '"user-agent":"[^"]*"' | sort | uniq 
 | CoreDNS | `kubectl -n kube-system logs -l k8s-app=kube-dns` | The query log when the `log` plugin is on, plus upstream errors |
 | Hubble | `hubble observe -o json` | A per-flow audit trail, including verdicts |
 
-Reference: [Envoy Gateway Proxy Observability](https://gateway.envoyproxy.io/docs/tasks/observability/proxy-observability/) | [Envoy Access Log Format](https://www.envoyproxy.io/docs/envoy/latest/configuration/observability/access_log/usage)
+Reference: [Envoy Gateway Proxy Access Logs](https://gateway.envoyproxy.io/docs/tasks/observability/proxy-accesslog/) | [Envoy Response Flags](https://www.envoyproxy.io/docs/envoy/latest/configuration/advanced/substitution_formatter)
 
 ---
 
 ## 5. Putting It Together: Locating a Failure
 
-When a symptom is reported, each question you ask about it maps to one tool, as the diagram below shows.
+When someone reports a symptom, each question you ask about it maps to one tool:
 
 ```text
 Symptom reported
@@ -248,10 +248,10 @@ Symptom reported
    └─ Packet-level proof ───────► tcpdump on the node / pod interface (Domain 1)
 ```
 
-1. **Scope:** First work out whether the problem affects one client, one service or everything, and whether it happens on one node or on all of them.
-2. **Layer:** A timeout points at L3/L4 (policy, routing or encryption), while a 4xx/5xx response points at L7 (policy, route or backend).
-3. **Locate:** Use the tool that answers that layer's question, as mapped in the diagram above.
-4. **Fix and verify:** After the fix, re-run the same query and confirm that the symptom is gone.
+1. **Scope:** First work out who is affected: one client, one service or everything. Also check whether it happens on one node or on all of them.
+2. **Layer:** A timeout points at L3/L4 (policy, routing or encryption). A 4xx/5xx response points at L7 (policy, route or backend).
+3. **Locate:** Use the tool that answers that layer's question, as shown in the diagram above.
+4. **Fix and verify:** After the fix, run the same query again and confirm that the symptom is gone.
 
 ---
 

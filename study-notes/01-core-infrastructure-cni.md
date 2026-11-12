@@ -2,7 +2,7 @@
 
 > **Exam Weight: 15%**: This domain covers installing a CNI, managing IPAM, using Linux tools to debug packet-level issues, troubleshooting pod connectivity and running pods with more than one network interface.
 
-Everything else in the CKNE builds on this domain. Gateway API, encryption, BGP, egress gateways and Cluster Mesh all assume that you can stand up a CNI, confirm that it is healthy, and trace a packet when something is not working. If these basics are solid, the later domains become much easier.
+Everything else in the CKNE builds on this domain. Gateway API, encryption, BGP, egress gateways and Cluster Mesh all assume a few basic skills. You can set up a CNI, check that it is healthy, and trace a packet when something breaks. Once these basics are solid, the later domains get much easier.
 
 ## Index
 
@@ -19,7 +19,7 @@ Everything else in the CKNE builds on this domain. Gateway API, encryption, BGP,
 
 ## 1. How CNI Works
 
-Whenever kubelet creates a Pod sandbox, the container runtime calls the CNI plugin binary with the `ADD` command and passes it the path of the Pod's network namespace. The plugin then creates the network interface (usually a veth pair), assigns the Pod an IP address from IPAM and programs the routes it needs. Later, when the Pod is deleted, the runtime calls the plugin with `DEL`, which reverses all of this.
+When kubelet creates a Pod sandbox, the container runtime calls the CNI plugin binary with the `ADD` command. It also passes the path of the Pod's network namespace. The plugin then creates the network interface (usually a veth pair). It gets an IP address for the Pod from IPAM and sets up the routes the Pod needs. When the Pod is deleted, the runtime calls the plugin with `DEL`, which undoes all of this.
 
 The runtime and the plugin rely on a few fixed locations on each node:
 
@@ -40,7 +40,7 @@ kubectl describe node <node> | grep -i -A3 "NetworkReady\|Ready"
 ```
 
 > [!IMPORTANT]
-> Because the runtime picks the first file in lexical order, a leftover config from a previous CNI (for example `10-flannel.conflist`) that sorts **before** the one you want will win. So if pods get IPs from the wrong range, look in `/etc/cni/net.d/` first.
+> The runtime picks the first file in lexical order. So a leftover config from an old CNI (for example `10-flannel.conflist`) wins if it sorts **before** the one you want. If pods get IPs from the wrong range, look in `/etc/cni/net.d/` first.
 
 Reference: [CNI Specification](https://github.com/containernetworking/cni/blob/main/SPEC.md)
 
@@ -48,7 +48,7 @@ Reference: [CNI Specification](https://github.com/containernetworking/cni/blob/m
 
 ## 2. Installing Cilium with the Cilium CLI
 
-The quickest way to get Cilium running is with the Cilium CLI. First install the CLI itself, then use it to install Cilium, wait until it is healthy and run the built-in connectivity test:
+The quickest way to get Cilium running is with the Cilium CLI. First install the CLI. Then use it to install Cilium, wait until Cilium is healthy, and run the built-in connectivity test:
 
 ```bash
 # Install the Cilium CLI (Linux amd64)
@@ -68,14 +68,14 @@ cilium status --wait
 cilium connectivity test
 ```
 
-`cilium install` is a wrapper around the Helm chart, which means you can pass any Helm value with `--set`. To see what is actually configured, use `cilium config view`, which shows the agent ConfigMap (`cilium-config`), and `helm get values`, which shows the Helm values you supplied:
+`cilium install` uses the Cilium Helm chart under the hood, so you can pass any Helm value with `--set`. To see what is really configured, use two commands. `cilium config view` shows the agent ConfigMap (`cilium-config`). `helm get values` shows the Helm values you supplied:
 
 ```bash
 cilium config view
 helm get values cilium -n kube-system
 ```
 
-To change settings on a running install, use `cilium upgrade --reuse-values --set <key>=<value>` (or `helm upgrade ... --reuse-values`). The agents only pick up the new config after a restart, so restart them afterwards. Keep in mind that `--reuse-values` is meant for config changes on the same Cilium version only, not for version upgrades:
+To change settings on a running install, use `cilium upgrade --reuse-values --set <key>=<value>` (or `helm upgrade ... --reuse-values`). Only use `--reuse-values` when the chart version stays the same, so for config changes and not for version upgrades. The agents only pick up the new config after a restart, so restart them afterwards:
 
 ```bash
 kubectl -n kube-system rollout restart ds/cilium
@@ -88,7 +88,7 @@ Reference: [Cilium Quick Installation](https://docs.cilium.io/en/stable/gettings
 
 ## 3. kube-proxy Replacement and BPF Masquerading
 
-With **kube-proxy replacement (KPR)**, Cilium implements ClusterIP, NodePort, LoadBalancer, externalIPs and hostPort in eBPF, so the node no longer has any `KUBE-SVC-*` iptables chains. However, this creates a chicken-and-egg problem: without kube-proxy, nothing translates the `kubernetes` ClusterIP, so Cilium cannot use it to reach the API server. That is why you must tell Cilium the real API server address.
+With **kube-proxy replacement (KPR)**, Cilium handles ClusterIP, NodePort, LoadBalancer, externalIPs and hostPort in eBPF. So the node no longer has any `KUBE-SVC-*` iptables chains. This creates a chicken-and-egg problem, though. Without kube-proxy, nothing translates the `kubernetes` ClusterIP, so Cilium cannot use it to reach the API server. That is why you must give Cilium the real API server address.
 
 ```bash
 # Find the API server address
@@ -102,7 +102,7 @@ cilium install \
   --set bpf.masquerade=true
 ```
 
-If the cluster already runs kube-proxy, remove it **before** you switch (or right after), so that its rules do not compete with Cilium:
+If the cluster already runs kube-proxy, remove it **before** you switch (or right after), so its rules do not compete with Cilium. Removing kube-proxy breaks existing Service connections, so expect a short disruption:
 
 ```bash
 kubectl -n kube-system delete ds kube-proxy
@@ -115,7 +115,7 @@ On a new kubeadm cluster, you can avoid this cleanup by skipping kube-proxy enti
 
 **Verify:**
 
-Check the agent status to confirm that both features are active, and then look at the eBPF service table:
+Check the agent status to confirm that both features are on. Then look at the eBPF service table:
 
 ```bash
 kubectl -n kube-system exec ds/cilium -- cilium-dbg status | grep -E "KubeProxyReplacement|Masquerading"
@@ -131,9 +131,15 @@ Cilium can do the masquerading (SNAT) of traffic leaving the cluster in two ways
 | Masquerading mode | How SNAT for pod→outside traffic is done | Setting |
 |-------------------|------------------------------------------|---------|
 | iptables (default) | Through the `CILIUM_POST_nat` chain in the nat table | `bpf.masquerade=false` |
-| eBPF | Directly in eBPF on the native device | `bpf.masquerade=true` (this needs eBPF NodePort, which means KPR) |
+| eBPF | Directly in eBPF on the native device | `bpf.masquerade=true` (it depends on the eBPF NodePort feature, which KPR turns on) |
 
-Only traffic that leaves through a native (non-Cilium) device is masqueraded to the node IP. In other words, traffic is **not** masqueraded when its destination is in the local node's pod CIDR, inside `ipv4NativeRoutingCIDR` (if that is set), or, in eBPF mode, another node of the cluster. The Egress Gateway in Domain 3 builds on this behavior and changes the source IP to a gateway IP that you choose.
+Only traffic that leaves through a native (non-Cilium) device is masqueraded to the node IP. Traffic is **not** masqueraded in these cases:
+
+- The destination is in the local node's pod CIDR.
+- The destination is inside `ipv4NativeRoutingCIDR`, if that is set.
+- In eBPF mode, the destination is another node of the cluster.
+
+The Egress Gateway in Domain 3 builds on this. It changes the source IP to a gateway IP that you choose.
 
 Reference: [Kubernetes Without kube-proxy](https://docs.cilium.io/en/stable/network/kubernetes/kubeproxy-free/)
 
@@ -141,7 +147,7 @@ Reference: [Kubernetes Without kube-proxy](https://docs.cilium.io/en/stable/netw
 
 ## 4. IPAM and Pod CIDR Allocation
 
-Pod IP ranges can come from Kubernetes itself or from Cilium, depending on the IPAM mode. The table below shows where the Pod CIDR comes from at each layer:
+Pod IP ranges come from Kubernetes or from Cilium, depending on the IPAM mode. The table shows where the Pod CIDR comes from at each layer:
 
 | Layer | Where the Pod CIDR comes from |
 |-------|-------------------------------|
@@ -173,9 +179,9 @@ cilium install \
 ```
 
 > [!WARNING]
-> The pod CIDR must not overlap the node network or the Service CIDR, and for Cluster Mesh it must not overlap the other cluster's pod CIDR either. After install, never edit the existing entries in `clusterPoolIPv4PodCIDRList`, because you can only append new CIDRs. Likewise, `clusterPoolIPv4MaskSize` cannot be changed after install, and you should not change the IPAM mode of a live cluster.
+> The pod CIDR must not overlap the node network or the Service CIDR. With Cluster Mesh, it must not overlap the other cluster's pod CIDR either. After install, never edit the existing entries in `clusterPoolIPv4PodCIDRList`. If the pool runs out, add a new CIDR to the list instead. You also cannot change `clusterPoolIPv4MaskSize` after install. And do not change the IPAM mode of a live cluster.
 
-**Symptoms of IPAM trouble:** pods get stuck in `ContainerCreating`, and `kubectl describe pod` shows IP allocation errors. When you see this, compare the size of the per-node pool with `maxPods`. For example, a `/24` gives you about 252 pod IPs rather than 256, because Cilium reserves some addresses for its router and health endpoint.
+**Symptoms of IPAM trouble:** pods get stuck in `ContainerCreating`, and `kubectl describe pod` shows IP allocation errors. When you see this, compare the size of the per-node pool with `maxPods`. A `/24` has 256 addresses, but not all of them go to pods. The allocator reserves the network and broadcast addresses. Cilium also takes IPs from the same pool for its own endpoints, such as the health endpoint.
 
 Reference: [Cilium IPAM](https://docs.cilium.io/en/stable/network/concepts/ipam/)
 
@@ -197,7 +203,7 @@ ip neigh
 
 ### Enter a Pod's network namespace from the node
 
-Many application images ship without `ip` or `tcpdump`. Instead of installing them into the container, you can run the node's own tools inside the pod's network namespace:
+Many application images ship without `ip` or `tcpdump`. You do not need to install them in the container. Instead, run the node's own tools inside the pod's network namespace:
 
 ```bash
 # Find the pod's PID through the runtime
@@ -222,16 +228,16 @@ These are the `tcpdump` commands you will need most often:
 | Write the capture to a file | `tcpdump -i eth0 -nn -c 100 -w /tmp/capture.pcap port 80` |
 | Read a capture file back | `tcpdump -nn -r /tmp/capture.pcap` |
 | See traffic to one backend pod | `tcpdump -i any -nn host 10.10.1.23 and tcp port 8080` |
-| See only SYNs (connection attempts) | `tcpdump -i any -nn 'tcp[tcpflags] & (tcp-syn|tcp-ack) == tcp-syn'` |
+| See only SYNs (connection attempts) | `tcpdump -i any -nn 'tcp[tcpflags] & (tcp-syn\|tcp-ack) == tcp-syn'` |
 | See DNS queries | `tcpdump -i any -nn udp port 53` |
 | Print the payload (HTTP) | `tcpdump -i any -nn -A port 80` |
 
 > [!TIP]
-> Always use `-nn` so that tcpdump does not stall on reverse DNS lookups. Also, when a task gives you an exact packet count, output file path or interface, use exactly those values, because the result is usually checked by reading the file you wrote.
+> Always use `-nn`. It stops tcpdump from turning addresses and ports into names, so it does not stall on reverse DNS lookups. When a task gives you an exact packet count, file path or interface, use exactly those values. The result is often checked by reading the file you wrote.
 
 ### Read NAT and filter rules: `iptables`
 
-When a service path is broken, the cause is often an iptables rule. These commands list the rules and let you remove a bad one:
+When a service path is broken, the cause is often an iptables rule. These commands list the rules and remove a bad one:
 
 ```bash
 iptables -t nat -L -n -v --line-numbers
@@ -245,16 +251,16 @@ iptables -t nat -D PREROUTING 3
 
 To read a NAT problem, follow the path a packet takes:
 
-1. The packet goes from `PREROUTING` to `KUBE-SERVICES`, then to `KUBE-SVC-xxx` and finally to `KUBE-SEP-xxx`, which holds the `DNAT --to-destination <podIP>:<port>`. If the port or IP there is wrong, traffic goes to the wrong place.
-2. Rules are evaluated from top to bottom, so a manually inserted `DNAT` or `REDIRECT` **above** the Kubernetes jump takes precedence over it.
-3. If a `DROP` or `REJECT` rule in `FORWARD` or `INPUT` has growing packet counters, it is your culprit. You can watch the counters change with `watch -n1 'iptables -L FORWARD -n -v'`.
-4. Finally, `MASQUERADE` / `SNAT` in `POSTROUTING` decides which source IP the traffic has when it leaves the node.
+1. The packet goes from `PREROUTING` to `KUBE-SERVICES`, then to `KUBE-SVC-xxx`, and then to `KUBE-SEP-xxx`. The `KUBE-SEP-xxx` chain holds the `DNAT --to-destination <podIP>:<port>`. If the IP or port there is wrong, traffic goes to the wrong place.
+2. Rules are checked from top to bottom. So a manually inserted `DNAT` or `REDIRECT` **above** the Kubernetes jump wins.
+3. A `DROP` or `REJECT` rule in `FORWARD` or `INPUT` with growing packet counters is your culprit. Watch the counters change with `watch -n1 'iptables -L FORWARD -n -v'`.
+4. Last, `MASQUERADE` / `SNAT` in `POSTROUTING` sets the source IP the traffic has when it leaves the node.
 
 Also check `sysctl net.ipv4.ip_forward`, because it must be `1` on any node that forwards pod traffic.
 
 ### Network delay and latency
 
-When requests are slow rather than failing, first measure where the time goes, and then look for injected delay or drops on the interface:
+When requests are slow but not failing, first measure where the time goes. Then look for injected delay or drops on the interface:
 
 ```bash
 # Measure where the time goes
@@ -274,7 +280,7 @@ ethtool -S eth0 | grep -i drop
 
 ## 6. Troubleshooting Pod Connectivity
 
-Work from the bottom of the stack up, and change only one thing at a time so that you know which change fixed the problem. Each step below only makes sense once the step before it works:
+Work from the bottom of the stack up. Change only one thing at a time, so you know which change fixed the problem. Each step only makes sense once the step before it works:
 
 ```text
 1. Pod has an IP and is Ready?            kubectl get pod -o wide
@@ -303,7 +309,7 @@ kubectl -n kube-system exec ds/cilium -- cilium-dbg monitor --type drop
 
 ### DNS checks from inside a Pod
 
-Many connectivity problems turn out to be DNS problems, so check name resolution from inside the pod and then check CoreDNS itself:
+Many connectivity problems turn out to be DNS problems. So check name resolution from inside the pod, and then check CoreDNS itself:
 
 ```bash
 kubectl exec -it <pod> -- cat /etc/resolv.conf
@@ -330,10 +336,10 @@ Reference: [Debugging DNS Resolution](https://kubernetes.io/docs/tasks/administe
 
 ## 7. Multi-interface Pods with Multus
 
-Multus is a "meta" CNI, which means it does not replace your primary CNI but works alongside it. The primary CNI (Cilium) still provides `eth0`, while Multus attaches extra interfaces (`net1`, `net2`, ...) that you describe with `NetworkAttachmentDefinition` objects.
+Multus is a "meta" CNI. It does not replace your primary CNI. It works alongside it. The primary CNI (Cilium) still provides `eth0`. Multus adds extra interfaces (`net1`, `net2`, ...), which you describe with `NetworkAttachmentDefinition` objects.
 
 > [!NOTE]
-> When you run Multus alongside Cilium, install Cilium with `--set cni.exclusive=false`. Otherwise, Cilium renames the other CNI configs in `/etc/cni/net.d/` to `*.cilium_bak`, and Multus stops working.
+> When you run Multus alongside Cilium, install Cilium with `--set cni.exclusive=false`. The default is `true`, which makes Cilium rename the other CNI configs in `/etc/cni/net.d/` to `*.cilium_bak`. Then Multus stops working.
 
 The example below defines a macvlan network and then attaches it to a Pod through an annotation:
 
@@ -379,7 +385,7 @@ kubectl exec dual-nic -- ip -br addr
 kubectl get pod dual-nic -o jsonpath='{.metadata.annotations.k8s\.v1\.cni\.cncf\.io/network-status}'
 ```
 
-The plugin named in `"type"` must exist in `/opt/cni/bin/` on every node. If it is missing, the pod stays in `ContainerCreating`, and its events name the binary that could not be found.
+The plugin named in `"type"` must exist as a binary in `/opt/cni/bin/` on every node. If it is missing, the pod stays in `ContainerCreating`, and its events name the binary that could not be found.
 
 Reference: [Multus CNI Quickstart](https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/docs/quickstart.md)
 

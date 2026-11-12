@@ -157,7 +157,7 @@ spec:
     - 10.200.0.0/16
 ```
 
-A deny policy behaves like an allow policy in one important way: it puts the selected pods into default-deny for that direction. That is why this example pairs the deny with an allow (here `toEntities: all`). Without the allow, all other egress traffic would be blocked as well. Also note that deny rules cannot contain L7 rules or `toFQDNs`.
+Deny rules always win over allow rules. But Cilium puts a pod into default-deny as soon as any policy selects it, so a deny rule on its own would block more than you want. That is why this example pairs the deny with a broad allow (`toEntities: all`). Without the allow, all other egress traffic would be blocked too. Also note that deny rules cannot use L7 rules or `toFQDNs`.
 
 Reference: [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/) | [Cilium L3 Policy](https://docs.cilium.io/en/stable/security/policy/layer3/)
 
@@ -165,7 +165,9 @@ Reference: [Network Policies](https://kubernetes.io/docs/concepts/services-netwo
 
 ## 3. L7 Policies with Cilium
 
-When you add `rules.http` to a `toPorts` block, Cilium sends the traffic on that port through its Envoy proxy, which checks each HTTP request. Only requests that match a rule are allowed. Every other request on that port gets an **HTTP 403 Access denied** response instead of a dropped connection, which helps you tell an L7 denial apart from an L3/L4 one.
+When you add `rules.http` to a `toPorts` block, Cilium sends the traffic on that port through its Envoy proxy. The proxy checks each HTTP request, and only requests that match a rule are allowed. Every other request on that port gets an **HTTP 403 Access denied** response. The connection is not dropped, so you can tell an L7 denial apart from an L3/L4 one.
+
+The `method` and `path` values are regular expressions. A plain entry under `headers` (like `X-Session` below) only requires that the header is present. To require a value, write it as `Name: value`.
 
 ```yaml
 apiVersion: cilium.io/v2
@@ -192,7 +194,7 @@ spec:
         - method: POST
           path: "/cart"
           headers:
-          - "X-Session: .+"
+          - "X-Session"
 ```
 
 To test the policy, send requests from the frontend and watch for drops with Hubble. With the policy above, the request to `/products` should succeed and the request to `/admin` should return 403.
@@ -227,7 +229,7 @@ cilium install --set encryption.enabled=true --set encryption.type=wireguard
 cilium upgrade --reuse-values --set encryption.enabled=true --set encryption.type=wireguard
 kubectl -n kube-system rollout restart ds/cilium
 
-# Also encrypt node-to-node (host) traffic, not just pod traffic
+# Also encrypt node-to-node (host) traffic, not just pod traffic (beta feature)
 cilium upgrade --reuse-values --set encryption.nodeEncryption=true
 ```
 
@@ -274,9 +276,12 @@ If a task gives you the certificate and key files, use them exactly as given ins
 
 ### Issuing certificates with cert-manager
 
-Instead of creating the Secret by hand, you can let cert-manager create and renew it for you. There are two ways to do this. You can request the certificate explicitly with a `Certificate` resource (Option A below), or you can annotate the Gateway (Option B), in which case cert-manager creates one Certificate for each unique Secret name in `certificateRefs`.
+Instead of creating the Secret by hand, you can let cert-manager create and renew it for you. There are two ways to do this:
 
-The listener needs a `hostname`, `tls.mode: Terminate` and a Secret in the same namespace. Gateway API support must also be turned on in cert-manager with the Helm value `config.gatewayAPI.enabled=true`. Finally, the Gateway API CRDs must exist before cert-manager starts. If they are installed later, restart cert-manager so that it picks them up.
+- **Option A:** request the certificate with a `Certificate` resource.
+- **Option B:** annotate the Gateway. Then cert-manager creates one Certificate for each unique Secret name in `certificateRefs`.
+
+Option B has a few rules. The listener needs a `hostname` and `tls.mode: Terminate`, and the Secret must be in the same namespace as the Gateway. You also have to turn on Gateway API support in cert-manager with the Helm value `config.gatewayAPI.enabled=true`. Finally, the Gateway API CRDs must exist before cert-manager starts. If you install them later, restart cert-manager so it picks them up.
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -397,7 +402,7 @@ spec:
     kind: Secret
 ```
 
-Two related resources are also worth knowing. A `TLSRoute` with `mode: Passthrough` does not terminate TLS at the gateway; it hands the encrypted stream to the backend untouched. A `BackendTLSPolicy`, on the other hand, makes the gateway re-encrypt the traffic before sending it to the backend.
+Two related options are also worth knowing. A listener with `tls.mode: Passthrough` and a `TLSRoute` does not terminate TLS at the gateway. It hands the encrypted stream to the backend untouched. A `BackendTLSPolicy` does the opposite job: it makes the gateway use TLS again when it connects to the backend.
 
 ### Verify and troubleshoot
 
@@ -496,7 +501,7 @@ spec:
 An L4 policy uses `selector` to choose the workloads it applies to. Because ztunnel only works at L4, the policy can only match L4 attributes: source principals and namespaces, IP addresses and ports.
 
 > [!WARNING]
-> When a waypoint is in the path, the destination ztunnel sees the **waypoint's** identity instead of the original client's identity. In that case, a ztunnel policy must also allow `cluster.local/ns/<ns>/sa/waypoint`. The alternative is to enforce the client identity at the waypoint by using `targetRefs`.
+> When a waypoint is in the path, the destination ztunnel sees the **waypoint's** identity, not the original client's. A waypoint uses the service account named after its Gateway. So a ztunnel policy must also allow that identity, which is `cluster.local/ns/<ns>/sa/waypoint` for the default waypoint. The other option is to check the client identity at the waypoint by using `targetRefs`.
 
 ```yaml
 apiVersion: security.istio.io/v1

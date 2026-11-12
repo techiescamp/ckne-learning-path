@@ -2,7 +2,7 @@
 
 > **Exam Weight: 20%**: This domain covers routing traffic to LLM inference servers, using BGP to expose cluster networks, sending exit traffic through egress gateways, and discovering services across clusters.
 
-Tasks in this domain combine several moving parts, such as CRDs, Helm values and node labels, so a mistake in one layer can hide behind another. Read the whole task before you touch anything, and verify each layer before you move on to the next one.
+Tasks in this domain have several moving parts, such as CRDs, Helm values and node labels. A mistake in one layer can hide behind another. So read the whole task before you touch anything, and check each layer before you move on to the next one.
 
 ## Index
 
@@ -16,9 +16,9 @@ Tasks in this domain combine several moving parts, such as CRDs, Helm values and
 
 ## 1. Optimizing LLM Traffic: Gateway API Inference Extension
 
-Ordinary load balancing, such as round-robin, is a poor fit for LLM servers. The cost of a request varies widely, and each replica has its own queue depth, KV-cache usage and set of loaded LoRA adapters. If the gateway simply sends each request to the next pod in line, one replica can end up overloaded while another sits idle.
+Ordinary load balancing, such as round-robin, is a poor fit for LLM servers. Some requests cost far more than others. Each replica also has its own queue depth, KV-cache usage and set of loaded LoRA adapters. So if the gateway just sends each request to the next pod in line, one replica can be overloaded while another sits idle.
 
-The **Gateway API Inference Extension** solves this by adding an **Endpoint Picker (EPP)**. The gateway consults the EPP for every request, and the EPP chooses the best model-server pod to handle it.
+The **Gateway API Inference Extension** fixes this by adding an **Endpoint Picker (EPP)**. The gateway asks the EPP about every request, and the EPP picks the best model-server pod to handle it.
 
 ```text
 Client ──POST /v1/completions──► Gateway ──► HTTPRoute ──► InferencePool ──(ask EPP)──► best vLLM pod
@@ -31,7 +31,7 @@ Client ──POST /v1/completions──► Gateway ──► HTTPRoute ──►
 | `InferenceObjective` | An optional resource that sets a request priority (`spec.priority`, an integer) and binds to a pool through `spec.poolRef`. It uses the experimental API `inference.networking.x-k8s.io/v1alpha2` |
 
 > [!IMPORTANT]
-> The API versions changed as the project matured. Early releases used `inference.networking.x-k8s.io/v1alpha2`, while the GA `InferencePool` is `inference.networking.k8s.io/v1`. Because of this, always check which version the cluster actually serves:
+> The API versions changed as the project matured. Early releases used `inference.networking.x-k8s.io/v1alpha2`. The GA `InferencePool` is `inference.networking.k8s.io/v1`. So always check which version the cluster actually serves:
 > ```bash
 > kubectl api-resources | grep -i inference
 > kubectl explain inferencepool.spec --recursive
@@ -59,7 +59,7 @@ spec:
       number: 9002
 ```
 
-Releases up to v1.5.0 ship a Helm chart that creates the pool and its EPP together. From v1.6 onward, the EPP and its charts are maintained in the llm-d-router project instead, so check which of the two your cluster uses:
+Release v1.5.0 ships a Helm chart that creates the pool and its EPP together. In v1.6.0, the full-featured EPP moved to the llm-d project, and this project now focuses on the APIs and CRDs. So check which setup your cluster uses. The v1.5.0 chart looks like this:
 
 ```bash
 helm install llama-pool \
@@ -115,7 +115,7 @@ If the request fails, the symptom usually points to the cause:
 | Symptom | Check |
 |---------|-------|
 | 404 from gateway | The path match is wrong, or the route is not attached to the gateway (`Accepted=False`) |
-| 500/503 immediately | The EPP is not running or `endpointPickerRef` is wrong, and the pool uses `failureMode: FailClose` (the API default). The Helm chart defaults to `FailOpen` instead, which forwards the request anyway |
+| 500/503 immediately | The EPP is not running or `endpointPickerRef` is wrong. With `failureMode: FailClose` (the API default), the request then fails. The Helm chart defaults to `FailOpen` instead, which forwards the request anyway |
 | `ResolvedRefs=False` | The `group`, `kind` or `name` in `backendRefs` is wrong, or the gateway does not support InferencePool |
 | Traffic hits wrong pods | The `selector` labels or `targetPorts` do not match the model servers |
 
@@ -125,11 +125,11 @@ Reference: [Gateway API Inference Extension](https://gateway-api-inference-exten
 
 ## 2. Routing to Expose Networks: BGP
 
-BGP lets the cluster tell an upstream router to send traffic for certain prefixes to it. You can advertise **pod CIDRs**, so that external networks can reach pods directly without NAT, and **Service IPs**, which can be LoadBalancer, ClusterIP or externalIPs addresses.
+BGP lets the cluster tell an upstream router: "send traffic for these prefixes to me". You can advertise two kinds of prefixes. **Pod CIDRs** let external networks reach pods directly, without NAT. **Service IPs** can be LoadBalancer, ClusterIP or externalIPs addresses.
 
 ### Cilium BGP Control Plane
 
-Before you create any BGP resources, enable the control plane, restart the Cilium agents and operator so they pick up the change, and confirm that the BGP CRDs now exist:
+Before you create any BGP resources, enable the control plane. Then restart the Cilium agents and operator so they pick up the change, and check that the BGP CRDs now exist:
 
 ```bash
 cilium upgrade --reuse-values --set bgpControlPlane.enabled=true
@@ -137,7 +137,7 @@ kubectl -n kube-system rollout restart ds/cilium deploy/cilium-operator
 kubectl api-resources | grep -i ciliumbgp
 ```
 
-The configuration uses three resources that are linked in this order: **ClusterConfig → PeerConfig → Advertisement**. The ClusterConfig chooses which nodes speak BGP and who their peers are, the PeerConfig defines how to talk to each peer, and the Advertisement defines what to announce.
+The configuration uses three resources, linked in this order: **ClusterConfig → PeerConfig → Advertisement**. The ClusterConfig picks which nodes speak BGP and who their peers are. The PeerConfig sets how to talk to each peer. The Advertisement sets what to announce.
 
 ```yaml
 # Which nodes speak BGP, their ASN and their peers
@@ -197,18 +197,18 @@ spec:
         operator: DoesNotExist
 ```
 
-Because the ClusterConfig only applies to nodes that match its `nodeSelector`, label every node that should peer:
+The ClusterConfig only applies to nodes that match its `nodeSelector`. So label every node that should peer:
 
 ```bash
 kubectl label node <node> bgp=enabled
 ```
 
 > [!NOTE]
-> Older Cilium releases use `cilium.io/v2alpha1` for these kinds, and very old ones use the legacy `CiliumBGPPeeringPolicy` instead, so match whatever `kubectl api-resources` shows. Also keep in mind that `PodCIDR` advertises each node's own pod CIDR. This works only with Kubernetes or cluster-pool IPAM, while multi-pool IPAM needs `advertisementType: CiliumPodIPPool` instead. Before you peer, check what will be advertised against the pod CIDRs you are given (`kubectl get ciliumnodes`).
+> Older Cilium releases use `cilium.io/v2alpha1` for these kinds. Very old ones use the legacy `CiliumBGPPeeringPolicy` instead. So match whatever `kubectl api-resources` shows. Also, `PodCIDR` advertises each node's own pod CIDR. It works only with Kubernetes or cluster-pool IPAM. Multi-pool IPAM needs `advertisementType: CiliumPodIPPool` instead. Before you peer, compare what will be advertised with the pod CIDRs you are given (`kubectl get ciliumnodes`).
 
 ### Verify BGP
 
-Check the sessions and routes from the Cilium side first, and then confirm on the upstream router that it actually received them:
+Check the sessions and routes from the Cilium side first. Then confirm on the upstream router that it actually received them:
 
 ```bash
 cilium bgp peers
@@ -228,7 +228,7 @@ If something is wrong, the session state tells you where to look:
 |---------------|--------------|
 | `active` / `connect` / `idle` | The `peerAddress` is wrong, TCP/179 is blocked, or the router is not configured for this neighbor |
 | `established`, no routes | The Advertisement labels do not match the PeerConfig selector, or the service selector excludes every Service |
-| Routes present but traffic fails | The return path is the problem. The router must have routes back to the cluster, and you should also check the node's `rp_filter` setting |
+| Routes present but traffic fails | The return path is the problem. The router must have routes back to the cluster. Also check the node's `rp_filter` setting |
 | ASN mismatch | `localASN` and `peerASN` are swapped compared with the router config |
 
 ### Other BGP speakers you may meet
@@ -246,11 +246,11 @@ Reference: [Cilium BGP Control Plane](https://docs.cilium.io/en/stable/network/b
 
 ## 3. Egress Gateways for Cluster Exit Traffic
 
-By default, a pod's external traffic leaves from whichever node the pod runs on and is SNATed to that node's IP, so the source IP depends on where the pod happens to be scheduled. An **egress gateway** instead sends selected traffic through designated nodes and SNATs it to a **fixed, predictable IP**. Firewalls and partner APIs can then allow-list that one IP.
+By default, a pod's external traffic leaves from the node the pod runs on. It is SNATed to that node's IP. So the source IP depends on where the pod happens to be scheduled. An **egress gateway** changes this. It sends selected traffic through chosen nodes and SNATs it to a **fixed, predictable IP**. Firewalls and partner APIs can then allow-list that one IP.
 
 ### Prerequisites
 
-The egress gateway depends on BPF masquerading and kube-proxy replacement, so enable all three settings and restart the agents and operator. Then label the node that will act as the gateway:
+The egress gateway needs BPF masquerading and kube-proxy replacement. So enable all three settings below, then restart the agents and operator. After that, label the node that will act as the gateway:
 
 ```bash
 cilium upgrade --reuse-values \
@@ -289,11 +289,11 @@ spec:
     # interface: eth1
 ```
 
-The policy is cluster-scoped, which means it does not belong to any namespace. To limit it to one namespace, select the `io.kubernetes.pod.namespace` label as the example does, or use `namespaceSelector`.
+The policy is cluster-scoped, which means it does not belong to any namespace. To limit it to one namespace, select the `io.kubernetes.pod.namespace` label as the example does. You can also use `namespaceSelector` in the selector.
 
 ### Verify the egress path
 
-Confirm that the policy reached the BPF maps, and then check the source IP from both ends of the connection:
+First confirm that the policy reached the BPF maps. Then check the source IP from both ends of the connection:
 
 ```bash
 # Policy translated into BPF; Egress IP shows 0.0.0.0 except on the agent running on the gateway node
@@ -323,11 +323,11 @@ Reference: [Cilium Egress Gateway](https://docs.cilium.io/en/stable/network/egre
 
 ## 4. Cross-cluster Service Discovery: Cilium Cluster Mesh
 
-Cluster Mesh joins the Cilium datapaths of multiple clusters. Once they are joined, pods can reach pods in other clusters directly, policies can select identities from remote clusters, and **global services** can load-balance across backends in all clusters.
+Cluster Mesh joins the Cilium datapaths of several clusters. Once they are joined, three things work. Pods can reach pods in other clusters directly. Policies can select identities from remote clusters. And **global services** can load-balance across backends in all clusters.
 
 ### Requirements
 
-Check these requirements before you connect any clusters, because each one prevents a specific failure:
+Check these requirements before you connect any clusters. Each one prevents a specific failure:
 
 | Requirement | Why |
 |-------------|-----|
@@ -338,7 +338,7 @@ Check these requirements before you connect any clusters, because each one preve
 
 ### Setup
 
-Install each cluster with its own name, ID and pod CIDR. Because the clusters must share a CA, copy cluster 1's CA Secret into cluster 2 before you install Cilium there. After that, enable the clustermesh-apiserver in both clusters and connect them:
+Install each cluster with its own name, ID and pod CIDR. The clusters must share a CA. So copy cluster 1's CA Secret into cluster 2 before you install Cilium there. Then enable the clustermesh-apiserver in both clusters and connect them:
 
 ```bash
 # Cluster 1
@@ -385,9 +385,9 @@ spec:
   - port: 80
 ```
 
-The backend can run only in cluster 2, and a client in cluster 1 can still resolve `backend.shop.svc.cluster.local`. This works as long as the Service object also exists in cluster 1, even if its selector matches nothing there.
+The backend can run only in cluster 2, and a client in cluster 1 can still resolve `backend.shop.svc.cluster.local`. This works because the Service object also exists in cluster 1. Its selector can match nothing there, but the Service itself must exist.
 
-To test it, call the service several times from a client in cluster 1, and then check the backends that the Cilium agent knows for the service:
+To test it, call the service several times from a client in cluster 1. Then check which backends the Cilium agent knows for the service:
 
 ```bash
 kubectl --context kind-c1 -n shop exec deploy/client -- \
@@ -411,15 +411,15 @@ Then match what you see against the most common causes:
 
 | Symptom | Likely cause |
 |---------|--------------|
-| Status shows 0 remote nodes | The clustermesh-apiserver Service is not reachable, for example because it has no LB IP, the NodePort is wrong, or a firewall blocks it |
+| Status shows 0 remote nodes | The clustermesh-apiserver Service is not reachable. For example, it has no LB IP, the NodePort is wrong, or a firewall blocks it |
 | TLS / certificate errors | The clusters do not share a CA because the `cilium-ca` Secret was not copied |
 | Duplicate cluster ID error | The same `cluster.id` is used in two clusters |
 | Global service only hits local backends | The annotation is missing in **one** of the clusters, or `affinity: local` is set and healthy local backends exist |
 | Cross-cluster pod traffic dropped | The pod CIDRs overlap, or a policy does not allow the remote identity |
 
-As an alternative to the annotations, newer Cilium versions also support the Kubernetes **Multi-Cluster Services API**, which uses `ServiceExport` / `ServiceImport` objects and `*.svc.clusterset.local` names.
+Newer Cilium versions also support the Kubernetes **Multi-Cluster Services API** as an alternative to the annotations. It uses `ServiceExport` / `ServiceImport` objects and `*.svc.clusterset.local` names.
 
-Reference: [Cilium Cluster Mesh](https://docs.cilium.io/en/stable/network/clustermesh/clustermesh/)
+Reference: [Cilium Cluster Mesh](https://docs.cilium.io/en/stable/network/clustermesh/setup/)
 
 ---
 

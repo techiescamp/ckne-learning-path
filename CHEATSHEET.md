@@ -136,4 +136,14 @@ sum by (rcode) (rate(coredns_dns_responses_total[5m]))
 
 ## Envoy `response_flags`
 
-When Envoy cannot complete a request, the response flag tells you why. `UH` means there was no healthy upstream, and `UF` means the connection to the upstream failed. `UT` means the upstream timed out, while `NR` means no route matched the request. `URX` means Envoy used up all its retries, `DC` means the client disconnected, and `RL` means the request was rate limited.
+When Envoy cannot complete a request, the response flag in the access log tells you why:
+
+| Flag | Meaning |
+|------|---------|
+| `UH` | No healthy upstream host (with a 503) |
+| `UF` | The connection to the upstream failed (with a 503) |
+| `UT` | The upstream request timed out (with a 504) |
+| `NR` | No route matched the request (with a 404), or no filter chain matched the connection |
+| `URX` | The retry limit (or TCP connect attempt limit) was reached |
+| `DC` | The downstream (client) connection was closed |
+| `RL` | The request was rate limited locally by the HTTP rate limit filter (with a 429) |
