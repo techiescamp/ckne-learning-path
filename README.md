@@ -940,12 +940,8 @@ kubectl apply -f svc.yaml
 
 | Trap | Prevention |
 |------|-----------|
-| Working on the wrong host | Check the hostname in your prompt before every change |
 | A default-deny policy breaks DNS | Also allow UDP and TCP port 53 to `kube-dns` |
 | A Cilium change does not take effect | Restart the Cilium agents and the operator after the change |
-| A Gateway test does not match the route | Use `curl --resolve` or set the `Host` header |
-| An L7 policy does nothing | In Cilium, add `rules.http`. In Istio ambient, add a waypoint and use `targetRefs` |
-| tcpdump hangs | Add `-nn`, and add `-c <count>` when the task asks for a count |
 | A Corefile edit is ignored | Check the CoreDNS logs right after the edit for a syntax error |
 
 ### Last-Minute Checklist
@@ -968,24 +964,25 @@ kubectl apply -f svc.yaml
 
 <br>
 
-### Quick Stats
-
-| Item | Detail |
-|------|--------|
-| **Duration** | 2 hours |
-| **Format** | Hands-on tasks in a Linux remote desktop |
-| **Passing Score** | 67% |
-| **Kubernetes Version** | v1.37 |
-| **Results** | Emailed within 24 hours |
-
 ### Keyboard Shortcuts
 
 | Action | Shortcut |
 |--------|----------|
-| Copy / paste in the terminal | `Ctrl+Shift+C` / `Ctrl+Shift+V` |
-| Copy / paste in other apps | `Ctrl+C` / `Ctrl+V` |
-| `Ctrl+W` inside the remote desktop | `Ctrl+Alt+W` |
-| Vim insert mode | `i` (the INSERT key is disabled) |
+| Close tab (Chrome) | `Ctrl+Alt+W` (**NOT** `Ctrl+W`) |
+| Copy (terminal) | `Ctrl+Shift+C` |
+| Paste (terminal) | `Ctrl+Shift+V` |
+| Find in Firefox | `Ctrl+F` |
+
+### Vim Quick Reference
+
+```
+i            → INSERT mode          :wq      → Save and quit
+Esc          → COMMAND mode         :q!      → Quit without saving
+dd           → Delete line          yy       → Copy line
+p            → Paste                u        → Undo
+gg / G       → Top / Bottom         /pattern → Search
+:%s/old/new/g → Replace all         :set paste → Paste mode
+```
 
 ### Time Management
 
@@ -997,7 +994,7 @@ kubectl apply -f svc.yaml
 | Core Infrastructure and CNI | 15% | ~18 min |
 | Observability | 15% | ~18 min |
 
-**3-pass approach:** In the first pass (about 60 min), do the quick tasks. In the second pass (about 45 min), do the longer builds such as BGP, Cluster Mesh and Istio policies. Use the last 15 minutes to re-run every check.
+**Note:** In the first pass (about 60 min), do the quick tasks. In the second pass (about 45 min), do the longer builds such as BGP, Cluster Mesh and Istio policies. Use the last 15 minutes to re-run every check.
 
 </details>
 
