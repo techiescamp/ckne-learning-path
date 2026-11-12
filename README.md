@@ -47,57 +47,6 @@ The same code, **40KUBE26CT**, also saves you up to 47% on the following bundles
 
 ---
 
-### Official Weightage per Domain
-
-<details>
-<summary><strong>1. Core Infrastructure and CNI (15%)</strong></summary>
-
-- Installing and Configuring CNI Plugins
-- Managing IPAM and Pod CIDR Allocation
-- Using Linux Tools (iptables, ip, tcpdump) for Packet-level Issues
-- Troubleshooting Pod Connectivity (DNS, pod-to-pod)
-- Configuring Multi-interface Pods
-</details>
-
-<details>
-<summary><strong>2. Service Networking and DNS (25%)</strong></summary>
-
-- Configuring L4 Services
-- Understanding kube-proxy and CNI Alternatives
-- Customizing coreDNS for Services
-- Troubleshooting Service Network Traffic
-- Configuring Pod Endpoint Availability
-- Managing Traffic with the Gateway API (Gateway, HTTPRoutes)
-</details>
-
-<details>
-<summary><strong>3. Advanced Traffic Management (20%)</strong></summary>
-
-- Optimizing LLM Traffic
-- Implementing Routing to Expose Networks
-- Configuring Egress Gateways for Cluster Exit Traffic
-- Implementing Cross Cluster Service Discovery and Load Balancing
-</details>
-
-<details>
-<summary><strong>4. Network Security and Policy (25%)</strong></summary>
-
-- Securing Traffic with Network Policies
-- Implementing Node and Pod Level Encryption
-- Managing TLS Certificates for Gateway API
-- Implementing Pod-level Authentication and Authorization
-</details>
-
-<details>
-<summary><strong>5. Observability (15%)</strong></summary>
-
-- Analyzing Network Health Using Metrics
-- Troubleshooting End to End Network Performance with Tracing
-- Auditing Traffic with Logs
-</details>
-
----
-
 ## The Learning Path
 
 > **Source:** [CNCF CKNE Curriculum](https://github.com/cncf/curriculum/blob/main/CKNE_Curriculum.pdf)
