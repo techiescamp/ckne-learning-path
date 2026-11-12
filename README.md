@@ -192,7 +192,7 @@ The domains build on each other, so study them in the order shown below. Every l
 This section walks through each subtopic of the Core Infrastructure and CNI domain.
 
 ### Installing and configuring CNI plugins
-> CNI Basics : Whenever a new Pod sandbox is created, the container runtime calls the CNI plugin with an `ADD` command, and the plugin sets up the Pod's network. The runtime finds the plugin through a config file in `/etc/cni/net.d/`. If there is more than one file there, the first one in alphabetical order wins, while the plugin binaries themselves live in `/opt/cni/bin/`. Until a CNI config exists, the node stays `NotReady`, which is why the CNI is the first thing you install on a new cluster.
+> CNI Basics : When a new Pod starts, the container runtime asks the CNI plugin to set up its network. The runtime reads the CNI config from `/etc/cni/net.d/`, and the plugin binaries sit in `/opt/cni/bin/`. If there are several config files, the first one in alphabetical order is used. A node stays `NotReady` until a CNI is installed, so install the CNI first on a new cluster.
 
 ```bash
 # Check which CNI is active on a node
@@ -200,7 +200,7 @@ ls -l /etc/cni/net.d/
 cat /etc/cni/net.d/05-cilium.conflist
 ```
 
-> Install Cilium with the Cilium CLI : The `cilium install` command is a wrapper around the Cilium Helm chart, so you can pass any Helm value with `--set`. To run Cilium as a full kube-proxy replacement with eBPF masquerading, you also have to point it at the real API server address, because without kube-proxy Cilium cannot rely on the in-cluster Service IP to reach the API server.
+> Install Cilium with the Cilium CLI : `cilium install` uses the Cilium Helm chart in the background, so you can pass any Helm value with `--set`. If you replace kube-proxy, you must also give Cilium the real API server IP and port. This is because, without kube-proxy, the in-cluster Service IP for the API server does not work yet.
 
 ```bash
 # Install Cilium without kube-proxy, with eBPF masquerading
@@ -253,7 +253,7 @@ cilium install \
 > Never edit the existing entries in `clusterPoolIPv4PodCIDRList`. If you need more addresses, only append new CIDRs to the list. Also note that `clusterPoolIPv4MaskSize` cannot be changed after install, so choose it carefully up front.
 
 ### Using Linux tools for packet-level issues
-> tcpdump : In the exam, capture exactly what the task asks for, which usually means a specific interface, port, packet count and output file. Always add `-nn` so that tcpdump does not stall while it tries to resolve addresses through reverse DNS.
+> tcpdump : In the exam, capture only what the task asks for, such as the interface, port, number of packets and output file. Always add `-nn` so tcpdump shows plain IPs and ports and does not slow down doing DNS lookups.
 
 ```bash
 # Capture a fixed number of packets on an interface and port into a file
@@ -311,7 +311,7 @@ kubectl get endpointslices -n kube-system -l kubernetes.io/service-name=kube-dns
 ```
 
 ### Configuring multi-interface Pods
-> Multus : With Multus, Cilium still provides the pod's main interface, `eth0`, while Multus attaches extra interfaces (`net1`, `net2`, ...) that you describe in a `NetworkAttachmentDefinition`. For this to work, install Cilium with `cni.exclusive=false`. Otherwise, Cilium renames the other CNI configs to `*.cilium_bak`, and the extra interfaces are never attached.
+> Multus : With Multus, Cilium still gives the pod its main interface, `eth0`. Multus then adds extra interfaces (`net1`, `net2`, ...) that you define in a `NetworkAttachmentDefinition`. To make this work, install Cilium with `cni.exclusive=false`. If you skip it, Cilium disables the other CNI configs and the extra interfaces never appear.
 
 ```yaml
 apiVersion: k8s.cni.cncf.io/v1
@@ -469,7 +469,7 @@ kubectl run dns-test --rm -it --image=busybox:1.36 --restart=Never -- nslookup a
 ```
 
 ### Configuring Pod endpoint availability
-> Probes and Endpoints : A Service only sends traffic to pods that are Ready. Readiness probes decide whether a pod is included as an endpoint, while liveness probes restart the container when it fails. So if a pod is running but receives no traffic, check its readiness first, and then compare the Service's selector and ports with the pod.
+> Probes and Endpoints : A Service sends traffic only to pods that are Ready. The readiness probe decides if a pod gets traffic, and the liveness probe restarts a container that is stuck. So if a pod is running but gets no traffic, first check if it is Ready, then check that the Service selector and ports match the pod.
 
 ```yaml
 readinessProbe:
@@ -786,7 +786,7 @@ hubble observe -n shop --verdict DROPPED
 ```
 
 ### Implementing node and Pod level encryption
-> WireGuard : When WireGuard is enabled, Cilium encrypts pod traffic between nodes and sends it over the `cilium_wg0` interface (UDP 51871). If you also want traffic between the nodes themselves to be encrypted, add `encryption.nodeEncryption=true`.
+> WireGuard : With WireGuard turned on, Cilium encrypts pod traffic that goes between nodes. This traffic leaves through the `cilium_wg0` interface on UDP port 51871. To encrypt node-to-node traffic as well, also set `encryption.nodeEncryption=true`.
 
 ```bash
 cilium upgrade --reuse-values --set encryption.enabled=true --set encryption.type=wireguard
@@ -896,7 +896,7 @@ sum by (rcode) (rate(coredns_dns_responses_total{rcode=~"SERVFAIL|NXDOMAIN"}[5m]
 ```
 
 ### Troubleshooting end-to-end network performance with tracing
-> Jaeger : A trace is a tree of spans, with one span for each hop the request takes. Sort the traces with the longest first, open a slow one, and find the span that holds most of the time. If a parent span is long but its children are short, the time is being spent inside that service itself. Note that in ambient mode, spans come from waypoints and gateways, not from ztunnel.
+> Jaeger : A trace shows the full path of one request, and each step in that path is a span. To find a slow step, sort traces by duration, open a slow one, and look for the longest span. If a span is long but the spans under it are short, the delay is inside that service. In ambient mode, spans come from waypoints and gateways, not from ztunnel.
 
 ### Auditing traffic with logs
 > Envoy Access Logs : Envoy Gateway writes access logs in JSON, and each entry records the path, status, response flags, user agent and client IP. This makes the logs a good place to find out who is sending bad traffic to a particular path.
@@ -920,18 +920,208 @@ kubectl -n istio-system logs -l app=ztunnel | grep -iE "policy rejection|denied"
 
 ---
 
-## Repository Contents
+## 📖 Exam References
 
-| File | Purpose |
-|------|---------|
-| [study-notes/](./study-notes/) | One file per exam domain, covering concepts, YAML, verification and troubleshooting |
-| [PRACTICE_QUESTIONS.md](./PRACTICE_QUESTIONS.md) | Exam-style scenario tasks, with the solutions hidden until you open them |
-| [CHEATSHEET.md](./CHEATSHEET.md) | A one-page command reference for every tool used in the exam |
-| [EXAM_GUIDE.md](./EXAM_GUIDE.md) | What the exam environment looks like, how to approach exam day, and FAQs |
+<details>
+<summary><strong>🎯 Exam Tips &amp; Strategy</strong></summary>
+
+<br>
+
+### What to Expect
+
+- The Prometheus, Hubble and Jaeger UIs are already running, so you only need to use them to find problems.
+- Most tasks give you a `curl` or `openssl` command to check your work. Run it before your change to see the failure, and run it again after to confirm the fix.
+- Each task has a Quick Reference box with doc links. Open those links instead of searching.
+- There is an on-screen scratchpad. Use it to sketch the traffic path before you start a task with several hops.
+- You can take a few short breaks, but the timer keeps running, so take them between tasks.
+- The remote desktop can be slow and copy/paste sometimes fails, so practice typing common commands and short YAML from memory.
+
+### Per-task Workflow
+
+```text
+1. ssh <designated-host>
+2. Read the task and note every name, namespace, port, IP and file path
+3. Run the provided check and see it fail
+4. Fix or build, using the linked docs
+5. Run the provided check again and see it pass
+6. exit
+```
+
+### Common Traps
+
+| Trap | Prevention |
+|------|-----------|
+| Working on the wrong host | Check the hostname in your prompt before every change |
+| A default-deny policy breaks DNS | Also allow UDP and TCP port 53 to `kube-dns` |
+| A Cilium change does not take effect | Restart the Cilium agents and the operator after the change |
+| A Gateway test does not match the route | Use `curl --resolve` or set the `Host` header |
+| tcpdump hangs | Add `-nn`, and add `-c <count>` when the task asks for a count |
+
+> 📄 Full guide: [EXAM_GUIDE.md](./EXAM_GUIDE.md)
+
+</details>
 
 ---
 
-## Official Resources
+<details>
+<summary><strong>📅 Exam Day Guide</strong></summary>
+
+<br>
+
+### Quick Stats
+
+| Item | Detail |
+|------|--------|
+| **Duration** | 2 hours |
+| **Format** | Hands-on tasks in a Linux remote desktop |
+| **Passing Score** | 67% |
+| **Kubernetes Version** | v1.37 |
+| **Results** | Emailed within 24 hours |
+
+### Keyboard Shortcuts
+
+| Action | Shortcut |
+|--------|----------|
+| Copy / paste in the terminal | `Ctrl+Shift+C` / `Ctrl+Shift+V` |
+| Copy / paste in other apps | `Ctrl+C` / `Ctrl+V` |
+| `Ctrl+W` inside the remote desktop | `Ctrl+Alt+W` |
+| Vim insert mode | `i` (the INSERT key is disabled) |
+
+### Time Management
+
+| Domain | Weight | Suggested Time |
+|--------|:------:|:--------------:|
+| Service Networking and DNS | 25% | ~30 min |
+| Network Security and Policy | 25% | ~30 min |
+| Advanced Traffic Management | 20% | ~24 min |
+| Core Infrastructure and CNI | 15% | ~18 min |
+| Observability | 15% | ~18 min |
+
+**3-pass approach:** In the first pass (about 60 min), do the quick tasks. In the second pass (about 45 min), do the longer builds such as BGP, Cluster Mesh and Istio policies. Use the last 15 minutes to re-run every check.
+
+</details>
+
+---
+
+<details>
+<summary><strong>❓ CKNE FAQs</strong></summary>
+
+<br>
+
+**Q: What is the CKNE certification?**
+
+A: CKNE stands for Certified Kubernetes Network Engineer. It is a hands-on exam from the CNCF and the Linux Foundation that tests how well you can build, secure, observe and troubleshoot networking in Kubernetes clusters.
+
+**Q: Do I need the CKA before taking the CKNE?**
+
+A: No, there are no prerequisites. However, the exam expects you to be comfortable with `kubectl`, Pods, Deployments and Services, which is the level of a CKA holder.
+
+**Q: Is the CKNE exam multiple choice?**
+
+A: No. Every question is a hands-on task that you solve in a live environment through a terminal and a browser.
+
+**Q: What is the passing score for the CKNE?**
+
+A: You need 67% to pass, and the results are emailed to you within 24 hours.
+
+**Q: Which Kubernetes version does the CKNE use?**
+
+A: The exam environment runs Kubernetes v1.37.
+
+**Q: Which tools are used in the CKNE exam?**
+
+A: The official list is Istio, Cilium, Envoy, Gateway API, Hubble, Prometheus, Helm, Jaeger and cert-manager. You should also know CoreDNS and basic Linux tools such as `ip`, `iptables` and `tcpdump`.
+
+**Q: Is the CKNE only about Cilium?**
+
+A: No. Cilium is the main CNI, but tasks also cover Istio ambient mode, Envoy Gateway, the Gateway API, CoreDNS, MetalLB, kube-router and plain Linux networking.
+
+**Q: Which Istio mode should I study, sidecar or ambient?**
+
+A: Focus on ambient mode, with ztunnel for L4 and waypoints for L7, because the exam tasks are built around it.
+
+**Q: How hard is the CKNE compared to the CKA?**
+
+A: Most people find it harder, because it goes deeper into networking and uses more tools. Each task can involve several components, such as a Gateway, a policy and a Service, so you need to debug the whole path.
+
+**Q: Can I use documentation during the exam?**
+
+A: Yes. You can open the documentation sites listed in the official Resources Allowed page, and each task also links to the docs it needs.
+
+**Q: Do I have to install Prometheus, Hubble or Jaeger?**
+
+A: No. They are already running, and you use them to find problems through queries, flow filters and traces.
+
+**Q: How long does it take to prepare for the CKNE?**
+
+A: If you already know Kubernetes well, plan for about 6 weeks of steady hands-on practice. The learning path above follows that plan.
+
+**Q: Is there a free retake?**
+
+A: Yes, one retake is included. You must take the exam within 12 months of purchase.
+
+**Q: How long is the CKNE certification valid?**
+
+A: It is valid for 2 years from the date you pass.
+
+**Q: Is there a practice exam simulator?**
+
+A: Yes. Registration includes two Killer.sh sessions, and each one gives you 36 hours of access.
+
+**Q: How much does the CKNE exam cost?**
+
+A: Prices and discounts change, so check the official certification page below for the current price.
+
+</details>
+
+---
+
+<details>
+<summary><strong>📝 Practice Questions</strong></summary>
+
+<br>
+
+There are 20 exam-style tasks that cover all 5 CKNE domains. Try each task on your own before you open the solution.
+
+### How to Use
+
+1. Read the task and note every exact value, such as names, namespaces, ports and file paths.
+2. Solve the task on your own cluster.
+3. Open the solution and compare it with your work.
+4. If you got it wrong, redo the task from scratch the next day.
+
+> 📄 Full list: [PRACTICE_QUESTIONS.md](./PRACTICE_QUESTIONS.md)
+
+</details>
+
+---
+
+<details>
+<summary><strong>⚡ Command Cheatsheet</strong></summary>
+
+<br>
+
+The cheatsheet gives one-line reminders for every tool in the exam, grouped by tool:
+
+- Cilium, with the common Helm values
+- Hubble flow filters
+- Istio ambient and its policy types
+- Gateway API and Envoy Gateway
+- Services, EndpointSlices and DNS
+- MetalLB and kube-router
+- Linux networking (`ip`, `tcpdump`, `iptables`, `tc`)
+- PromQL queries and Envoy response flags
+
+> 📄 Full sheet: [CHEATSHEET.md](./CHEATSHEET.md)
+
+</details>
+
+---
+
+<details>
+<summary><strong>🔗 Official Resources</strong></summary>
+
+<br>
 
 | Resource | Link |
 |----------|------|
@@ -940,10 +1130,25 @@ kubectl -n istio-system logs -l app=ztunnel | grep -iE "policy rejection|denied"
 | Kubernetes Networking Concepts | [kubernetes.io](https://kubernetes.io/docs/concepts/cluster-administration/networking/) |
 | Killer.sh Simulator | [killer.sh](https://killer.sh) |
 
+</details>
+
 ---
 
-## Contributing
+<details>
+<summary><strong>🤝 Contributing</strong></summary>
 
-Corrections and additions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) to see how to contribute.
+<br>
+
+Contributions are welcome. You can help in these ways:
+
+- **Corrections:** Open an issue that describes the error, with a link to the official source.
+- **New content:** Open a pull request, and keep it within the CKNE exam scope.
+- **Typos and formatting:** Send a pull request directly, no issue needed.
+
+> 📄 Full guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+</details>
+
+---
 
 > ⭐ If this guide helped you, please star the repo!
