@@ -96,35 +96,23 @@ The same code, **40KUBE26CT**, also saves you up to 47% on the following bundles
 
 ---
 
-## Syllabus and Study Notes
+## The Learning Path
 
 > **Source:** [CNCF CKNE Curriculum](https://github.com/cncf/curriculum/blob/main/CKNE_Curriculum.pdf)
 
-| # | Domain | Weight | Study Notes | Key Tools & Topics |
-|:-:|--------|:------:|:-----------:|--------------------|
-| 1 | Core Infrastructure and CNI | **15%** | [Notes](./study-notes/01-core-infrastructure-cni.md) | Cilium install, kube-proxy-free mode, IPAM, Multus, `ip` / `iptables` / `tcpdump` |
-| 2 | Service Networking and DNS | **25%** | [Notes](./study-notes/02-service-networking-dns.md) | Services, MetalLB, kube-router, CoreDNS, probes and endpoints, Gateway API, Envoy Gateway |
-| 3 | Advanced Traffic Management | **20%** | [Notes](./study-notes/03-advanced-traffic-management.md) | Gateway API Inference Extension, BGP, Egress Gateway, Cluster Mesh |
-| 4 | Network Security and Policy | **25%** | [Notes](./study-notes/04-network-security-policy.md) | NetworkPolicy, CiliumNetworkPolicy (L3/L4/L7), WireGuard, Gateway TLS, Istio ambient AuthorizationPolicy |
-| 5 | Observability | **15%** | [Notes](./study-notes/05-observability.md) | Hubble, Prometheus, Jaeger, Envoy access logs |
+The domains build on each other, so study them in the order shown below. Every later topic needs a working CNI, which is why the first week is spent building a Cilium cluster.
+
+| Week | Domain | Weight | Study Notes | What you should be able to do at the end |
+|:----:|--------|:------:|:-----------:|-------------------------------------------|
+| 1 | Core Infrastructure and CNI | **15%** | [Notes](./study-notes/01-core-infrastructure-cni.md) | Install Cilium with kube-proxy replacement and BPF masquerading, add extra pod interfaces with Multus, and debug pod-to-pod traffic and DNS using `ip`, `iptables` and `tcpdump` |
+| 2 | Service Networking and DNS | **25%** | [Notes](./study-notes/02-service-networking-dns.md) | Expose apps with L4 Services, MetalLB and kube-router, customise CoreDNS, fix broken endpoints and probes, and route HTTP traffic with Gateway API and Envoy Gateway |
+| 3 | Network Security and Policy | **25%** | [Notes](./study-notes/04-network-security-policy.md) | Write Kubernetes and Cilium L3/L4/L7 policies, enable WireGuard, terminate TLS on a Gateway, and secure workloads with Istio ambient |
+| 4 | Advanced Traffic Management | **20%** | [Notes](./study-notes/03-advanced-traffic-management.md) | Peer with a router over BGP, pin egress traffic to a gateway node, connect two clusters with Cluster Mesh, and route inference traffic with an InferencePool |
+| 5 | Observability | **15%** | [Notes](./study-notes/05-observability.md) | Use Hubble to find drops, Prometheus to find failing backends, Jaeger to find slow hops, and Envoy access logs to find bad clients |
+| 6 | Review | – | – | Solve the practice tasks under time pressure, and only then use your Killer.sh sessions |
 
 > [!TIP]
 > **Service Networking (25%)** and **Network Security (25%)** together make up half the exam, so plan most of your study time around them. Troubleshooting also shows up in every domain, which means that for each feature you build, you should also practise breaking it and then fixing it.
-
----
-
-## The Learning Path
-
-The domains build on each other, so study them in the order shown below. Every later topic assumes that you already have a working CNI, which is why the first week is spent building a Cilium cluster.
-
-| Week | Focus | What you should be able to do at the end |
-|:----:|-------|-------------------------------------------|
-| 1 | Domain 1 | Install Cilium with kube-proxy replacement and BPF masquerading, and then debug pod-to-pod traffic and DNS using `ip`, `iptables` and `tcpdump` |
-| 2 | Domain 2 | Expose apps with L4 Services and MetalLB, customise CoreDNS, fix broken endpoints and probes, and route HTTP traffic with Gateway API |
-| 3 | Domain 4 | Write Kubernetes and Cilium L3/L4/L7 policies, enable WireGuard, terminate TLS on a Gateway, and secure workloads with Istio ambient |
-| 4 | Domain 3 | Peer with a router over BGP, pin egress traffic to a gateway node, connect two clusters with Cluster Mesh, and route inference traffic with an InferencePool |
-| 5 | Domain 5 | Use Hubble to find drops, Prometheus to find failing backends, Jaeger to find slow hops, and Envoy access logs to find bad clients |
-| 6 | Review | Solve the practice tasks under time pressure, and only then use your Killer.sh sessions |
 
 ---
 
