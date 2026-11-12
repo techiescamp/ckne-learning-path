@@ -6,21 +6,21 @@
 ![Duration](https://img.shields.io/badge/Duration-2%20Hours-orange)
 ![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red)
 
-A structured, hands-on learning path for the **Certified Kubernetes Network Engineer (CKNE)** exam from the Linux Foundation and CNCF. It follows the official curriculum domain by domain. For each topic you get the concept, working YAML, the commands to verify it and the failures you should be able to fix.
+This is a structured, hands-on learning path for the **Certified Kubernetes Network Engineer (CKNE)** exam from the Linux Foundation and CNCF. It follows the official curriculum domain by domain, and for each topic it gives you the concept, working YAML, the commands to verify it, and the failures you should be able to fix.
 
 ---
 ## Hit the Star! :star:
-If you plan to use this repo as a reference, please hit the star. Thanks!
+If you plan to use this repo as a reference, please hit the star so that others can find it too. Thanks!
 
 ---
 
 ## CKNE Exam Coupon (40% Off Exclusive Discount)
 
-To save a flat 40% on CKNE exam registration, use the following coupon code.
+You can save a flat 40% on CKNE exam registration by using the following coupon code.
 > [!IMPORTANT]
 > **Coupon:** Use code **40KUBE26CT** at [kube.promo/ckne](https://kube.promo/recommends/ckne/)
 
-Use code **40KUBE26CT** to save up to 47% on the following bundles:
+The same code, **40KUBE26CT**, also saves you up to 47% on the following bundles:
 
 - CKA + CKAD: [kube.promo/cka-ckad](https://kube.promo/cka-ckad)
 - CKA + CKS Bundle: [kube.promo/bundle](https://kube.promo/bundle)
@@ -33,15 +33,15 @@ Use code **40KUBE26CT** to save up to 47% on the following bundles:
 
 | Item | Detail |
 |------|--------|
-| **Format** | Online, proctored, performance-based tasks in a Linux remote desktop |
+| **Format** | Online and proctored, with performance-based tasks in a Linux remote desktop |
 | **Duration** | 2 hours |
 | **Passing Score** | 67% |
 | **Kubernetes Version** | v1.37 |
-| **Results** | Emailed within 24 hours |
-| **Retake** | One retake included |
-| **Eligibility** | 12 months from purchase |
-| **Validity** | 2 years |
-| **Simulator** | Killer.sh, 2 attempts with 36 hours of access each |
+| **Results** | Sent to you by email within 24 hours |
+| **Retake** | One retake is included |
+| **Eligibility** | You have 12 months from purchase to take the exam |
+| **Validity** | The certification is valid for 2 years |
+| **Simulator** | Killer.sh, with 2 attempts and 36 hours of access for each one |
 
 ---
 
@@ -109,22 +109,22 @@ Use code **40KUBE26CT** to save up to 47% on the following bundles:
 | 5 | Observability | **15%** | [Notes](./study-notes/05-observability.md) | Hubble, Prometheus, Jaeger, Envoy access logs |
 
 > [!TIP]
-> **Service Networking (25%)** and **Network Security (25%)** together make up half the exam. Troubleshooting runs through every domain, so for each feature you build, also practise breaking it and fixing it.
+> **Service Networking (25%)** and **Network Security (25%)** together make up half the exam, so plan most of your study time around them. Troubleshooting also shows up in every domain, which means that for each feature you build, you should also practise breaking it and then fixing it.
 
 ---
 
 ## The Learning Path
 
-The domains build on each other, so study them in this order. Every later topic assumes a working CNI, so a Cilium cluster comes first.
+The domains build on each other, so study them in the order shown below. Every later topic assumes that you already have a working CNI, which is why the first week is spent building a Cilium cluster.
 
 | Week | Focus | What you should be able to do at the end |
 |:----:|-------|-------------------------------------------|
-| 1 | Domain 1 | Install Cilium with kube-proxy replacement and BPF masquerading. Debug pod-to-pod traffic and DNS with `ip`, `iptables`, `tcpdump` |
-| 2 | Domain 2 | Expose apps with L4 Services and MetalLB. Customise CoreDNS. Fix broken endpoints and probes. Route HTTP with Gateway API |
-| 3 | Domain 4 | Write Kubernetes and Cilium L3/L4/L7 policies. Enable WireGuard. Terminate TLS on a Gateway. Secure workloads with Istio ambient |
-| 4 | Domain 3 | Peer over BGP. Pin egress to a gateway node. Connect two clusters with Cluster Mesh. Route inference traffic with an InferencePool |
-| 5 | Domain 5 | Find drops in Hubble, failing backends in Prometheus, slow hops in Jaeger and bad clients in Envoy access logs |
-| 6 | Review | Solve the practice tasks under time pressure, then use your Killer.sh sessions |
+| 1 | Domain 1 | Install Cilium with kube-proxy replacement and BPF masquerading, and then debug pod-to-pod traffic and DNS using `ip`, `iptables` and `tcpdump` |
+| 2 | Domain 2 | Expose apps with L4 Services and MetalLB, customise CoreDNS, fix broken endpoints and probes, and route HTTP traffic with Gateway API |
+| 3 | Domain 4 | Write Kubernetes and Cilium L3/L4/L7 policies, enable WireGuard, terminate TLS on a Gateway, and secure workloads with Istio ambient |
+| 4 | Domain 3 | Peer with a router over BGP, pin egress traffic to a gateway node, connect two clusters with Cluster Mesh, and route inference traffic with an InferencePool |
+| 5 | Domain 5 | Use Hubble to find drops, Prometheus to find failing backends, Jaeger to find slow hops, and Envoy access logs to find bad clients |
+| 6 | Review | Solve the practice tasks under time pressure, and only then use your Killer.sh sessions |
 
 ---
 
@@ -189,10 +189,10 @@ The domains build on each other, so study them in this order. Every later topic 
 
 ## 1. Core Infrastructure and CNI (15%)
 
-Following are the subtopics under Core Infrastructure and CNI
+This section walks through each subtopic of the Core Infrastructure and CNI domain.
 
 ### Installing and configuring CNI plugins
-> CNI Basics : The container runtime calls the CNI plugin with `ADD` when a Pod sandbox is created. Configs live in `/etc/cni/net.d/` (the first file in lexical order wins) and plugin binaries in `/opt/cni/bin/`. Nodes stay `NotReady` until a CNI config exists.
+> CNI Basics : Whenever a new Pod sandbox is created, the container runtime calls the CNI plugin with an `ADD` command, and the plugin sets up the Pod's network. The runtime finds the plugin through a config file in `/etc/cni/net.d/`. If there is more than one file there, the first one in alphabetical order wins, while the plugin binaries themselves live in `/opt/cni/bin/`. Until a CNI config exists, the node stays `NotReady`, which is why the CNI is the first thing you install on a new cluster.
 
 ```bash
 # Check which CNI is active on a node
@@ -200,7 +200,7 @@ ls -l /etc/cni/net.d/
 cat /etc/cni/net.d/05-cilium.conflist
 ```
 
-> Install Cilium with the Cilium CLI : `cilium install` wraps the Helm chart, so any Helm value can be passed with `--set`. Run Cilium as a full kube-proxy replacement with eBPF masquerading by pointing it at the real API server address.
+> Install Cilium with the Cilium CLI : The `cilium install` command is a wrapper around the Cilium Helm chart, so you can pass any Helm value with `--set`. To run Cilium as a full kube-proxy replacement with eBPF masquerading, you also have to point it at the real API server address, because without kube-proxy Cilium cannot rely on the in-cluster Service IP to reach the API server.
 
 ```bash
 # Install Cilium without kube-proxy, with eBPF masquerading
@@ -223,7 +223,7 @@ kubectl -n kube-system rollout restart ds/cilium
 kubectl -n kube-system rollout restart deploy/cilium-operator
 ```
 
-> Removing kube-proxy : On an existing cluster, delete the kube-proxy DaemonSet and ConfigMap, then flush its leftover rules on every node.
+> Removing kube-proxy : If an existing cluster already runs kube-proxy, first delete its DaemonSet and ConfigMap. Then flush the rules it left behind on every node, so that the old kube-proxy rules do not get in the way of Cilium.
 
 ```bash
 kubectl -n kube-system delete ds kube-proxy
@@ -232,7 +232,7 @@ iptables-save | grep -v KUBE | iptables-restore
 ```
 
 ### Managing IPAM and Pod CIDR allocation
-> IPAM Modes : In `kubernetes` mode Cilium uses each node's `spec.podCIDR`. In `cluster-pool` mode (the default) the Cilium operator carves per-node CIDRs from `ipam.operator.clusterPoolIPv4PodCIDRList`. The pod CIDR must not overlap the node network, the Service CIDR or another mesh cluster's pods.
+> IPAM Modes : There are two IPAM modes you need to know. In `kubernetes` mode, Cilium uses the `spec.podCIDR` that is set on each node. In `cluster-pool` mode, which is the default, the Cilium operator carves a CIDR for each node out of `ipam.operator.clusterPoolIPv4PodCIDRList`. Whichever mode you use, the pod CIDR must not overlap the node network, the Service CIDR or the pods of another cluster in the mesh, because overlapping ranges make routing ambiguous.
 
 ```bash
 # Kubernetes-level allocation
@@ -250,10 +250,10 @@ cilium install \
 ```
 
 > [!WARNING]
-> Never edit existing entries in `clusterPoolIPv4PodCIDRList`; only append new CIDRs. `clusterPoolIPv4MaskSize` cannot be changed after install.
+> Never edit the existing entries in `clusterPoolIPv4PodCIDRList`. If you need more addresses, only append new CIDRs to the list. Also note that `clusterPoolIPv4MaskSize` cannot be changed after install, so choose it carefully up front.
 
 ### Using Linux tools for packet-level issues
-> tcpdump : Capture exactly what the task asks for: interface, port, packet count and output file. Always use `-nn` so tcpdump does not stall on reverse DNS.
+> tcpdump : In the exam, capture exactly what the task asks for, which usually means a specific interface, port, packet count and output file. Always add `-nn` so that tcpdump does not stall while it tries to resolve addresses through reverse DNS.
 
 ```bash
 # Capture a fixed number of packets on an interface and port into a file
@@ -266,7 +266,7 @@ tcpdump -nn -r /tmp/capture.pcap
 tcpdump -i any -nn host <pod-ip> and tcp port 8080
 ```
 
-> nsenter : Run the node's tools inside a pod's network namespace when the app image has no `ip` or `tcpdump`.
+> nsenter : Application images often do not include `ip` or `tcpdump`. In that case, find the container's process ID and use nsenter to run the node's own tools inside the pod's network namespace.
 
 ```bash
 PID=$(crictl inspect <container-id> | jq .info.pid)
@@ -274,7 +274,7 @@ nsenter -t $PID -n ip addr
 nsenter -t $PID -n tcpdump -i eth0 -nn
 ```
 
-> iptables : Rules are evaluated top-down. A stray `DNAT`/`REDIRECT` above the Kubernetes chains, or a `DROP` with growing counters, breaks the path.
+> iptables : Rules are evaluated from top to bottom, so their order matters. This means that a stray `DNAT`/`REDIRECT` rule placed above the Kubernetes chains, or a `DROP` rule whose packet counters keep growing, can break the traffic path.
 
 ```bash
 iptables -t nat -L -n -v --line-numbers
@@ -284,7 +284,7 @@ iptables-save | grep <service-or-pod-ip>
 iptables -t nat -D PREROUTING <line-number>
 ```
 
-> Latency : Measure where the time goes, then look for injected delay on the interface.
+> Latency : When a request is slow, first measure where the time goes, for example connection setup compared with time to first byte. Then check whether a delay has been injected on the network interface, and remove it if you find one.
 
 ```bash
 curl -o /dev/null -s -w 'connect:%{time_connect} ttfb:%{time_starttransfer} total:%{time_total}\n' http://<svc>
@@ -293,7 +293,7 @@ tc qdisc del dev eth0 root
 ```
 
 ### Troubleshooting Pod connectivity
-> Bottom-up Approach : Check pod IP and readiness, then same-node and cross-node pod-to-pod, then Service, then DNS, then external, then policy drops.
+> Bottom-up Approach : Work from the bottom of the stack upwards, so that each check rules out one layer before you move on. Start with the pod's IP and readiness, then test pod-to-pod traffic on the same node and across nodes. After that, test the Service, then DNS, then external access, and finally look for policy drops.
 
 ```bash
 # Throwaway client with all the network tools
@@ -311,7 +311,7 @@ kubectl get endpointslices -n kube-system -l kubernetes.io/service-name=kube-dns
 ```
 
 ### Configuring multi-interface Pods
-> Multus : Multus attaches extra interfaces (`net1`, `net2`, ...) described by a `NetworkAttachmentDefinition`, while Cilium still provides `eth0`. Install Cilium with `cni.exclusive=false`, otherwise it renames other CNI configs to `*.cilium_bak`.
+> Multus : With Multus, Cilium still provides the pod's main interface, `eth0`, while Multus attaches extra interfaces (`net1`, `net2`, ...) that you describe in a `NetworkAttachmentDefinition`. For this to work, install Cilium with `cni.exclusive=false`. Otherwise, Cilium renames the other CNI configs to `*.cilium_bak`, and the extra interfaces are never attached.
 
 ```yaml
 apiVersion: k8s.cni.cncf.io/v1
@@ -352,10 +352,10 @@ kubectl exec dual-nic -- ip -br addr
 
 ## 2. Service Networking and DNS (25%)
 
-Following are the subtopics under Service Networking and DNS
+This section walks through each subtopic of the Service Networking and DNS domain.
 
 ### Configuring L4 Services
-> Service Types : Practice ClusterIP, NodePort and LoadBalancer. `externalTrafficPolicy: Local` preserves the client source IP, but only nodes with a local endpoint answer.
+> Service Types : Practise all three Service types: ClusterIP, NodePort and LoadBalancer. Setting `externalTrafficPolicy: Local` preserves the client's source IP, but the trade-off is that only nodes with a local endpoint answer, because traffic is no longer forwarded to pods on other nodes.
 
 ```yaml
 apiVersion: v1
@@ -372,7 +372,7 @@ spec:
   externalTrafficPolicy: Local
 ```
 
-> MetalLB : On bare metal, `LoadBalancer` Services stay `<pending>` until something allocates IPs.
+> MetalLB : On bare metal there is nothing to hand out external IPs, so `LoadBalancer` Services stay `<pending>` until something allocates them. MetalLB fills this gap: you install it, give it a pool of addresses, and then advertise that pool.
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.16.2/config/manifests/metallb-native.yaml
@@ -398,7 +398,7 @@ spec:
   - lab-pool
 ```
 
-> External Services : A Service without a selector plus an EndpointSlice gives an external IP a stable in-cluster name. Pod traffic to outside leaves with the node IP as its source (masquerading).
+> External Services : To give an external IP a stable name inside the cluster, create a Service without a selector and then add an EndpointSlice that points to that IP. Keep in mind that when pods send traffic outside the cluster, it leaves with the node IP as its source address, which is called masquerading.
 
 ```yaml
 apiVersion: v1
@@ -427,7 +427,7 @@ endpoints:
 ```
 
 ### Understanding kube-proxy and CNI alternatives
-> Service Implementations : Know how to tell which one a cluster uses and where its rules live.
+> Service Implementations : Services can be implemented by several different components, so you need to know how to tell which one a cluster uses and where its rules live. The table below shows where to look for each one.
 
 | Implementation | Where to look |
 |----------------|---------------|
@@ -447,7 +447,7 @@ kubectl -n kube-system exec ds/kube-router -- ipvsadm -Ln
 ```
 
 ### Customizing CoreDNS for Services
-> Corefile : CoreDNS is configured by the `coredns` ConfigMap in `kube-system`. Allow up to about 2 minutes for edits to apply, or restart the Deployment. A domain-specific server block must be at the top level, not nested inside `.:53 { }`.
+> Corefile : CoreDNS reads its configuration from the `coredns` ConfigMap in `kube-system`. After you edit it, allow up to about 2 minutes for the change to apply, or restart the Deployment to apply it straight away. If you add a server block for a specific domain, it must sit at the top level of the Corefile, not nested inside `.:53 { }`.
 
 ```text
 # Send all external lookups to a specific DNS server (inside .:53)
@@ -469,7 +469,7 @@ kubectl run dns-test --rm -it --image=busybox:1.36 --restart=Never -- nslookup a
 ```
 
 ### Configuring Pod endpoint availability
-> Probes and Endpoints : A Service only sends traffic to Ready pods. Readiness probes gate endpoint membership; liveness probes restart the container.
+> Probes and Endpoints : A Service only sends traffic to pods that are Ready. Readiness probes decide whether a pod is included as an endpoint, while liveness probes restart the container when it fails. So if a pod is running but receives no traffic, check its readiness first, and then compare the Service's selector and ports with the pod.
 
 ```yaml
 readinessProbe:
@@ -494,7 +494,7 @@ kubectl exec <pod> -- ss -lntp
 ```
 
 ### Managing traffic with the Gateway API
-> Gateway API : `GatewayClass` names the controller, `Gateway` defines listeners, and `HTTPRoute` maps matches to backends. Route `status.conditions` tell you exactly what is wrong.
+> Gateway API : Three resources work together here. The `GatewayClass` names the controller, the `Gateway` defines the listeners, and the `HTTPRoute` maps request matches to backends. When a route does not work, read its `status.conditions`, because they tell you exactly what is wrong.
 
 ```bash
 # Install Envoy Gateway (also installs the Gateway API CRDs)
@@ -554,7 +554,7 @@ curl -s --resolve shop.example.com:80:<GW_IP> http://shop.example.com/api
 ```
 
 ### Troubleshooting Service network traffic
-> Service Path : Client → DNS → Service IP → translation → EndpointSlice → Pod:targetPort. If the pod answers directly but the Service does not, the fault is in the Service, endpoints or translation.
+> Service Path : A request to a Service travels along this path: Client → DNS → Service IP → translation → EndpointSlice → Pod:targetPort, so check each step in that order. If the pod answers when you call it directly but the Service does not, the fault lies in the Service, its endpoints or the translation step.
 
 ```bash
 kubectl exec client -- nslookup web.default.svc.cluster.local
@@ -569,10 +569,10 @@ hubble observe -n default --to-label app=web --verdict DROPPED
 
 ## 3. Advanced Traffic Management (20%)
 
-Following are the subtopics under Advanced Traffic Management
+This section walks through each subtopic of the Advanced Traffic Management domain.
 
 ### Optimizing LLM traffic
-> Gateway API Inference Extension : An `InferencePool` groups model-server pods and points to an Endpoint Picker (EPP) that chooses the best pod per request using live metrics. Use it as an HTTPRoute backend instead of a Service. Check the served API version first with `kubectl explain inferencepool.spec`.
+> Gateway API Inference Extension : An `InferencePool` groups model-server pods and points to an Endpoint Picker (EPP), which uses live metrics to choose the best pod for each request. You then use the pool as an HTTPRoute backend in place of a Service. Before you write the YAML, check which API version the cluster serves with `kubectl explain inferencepool.spec`, so that your manifest matches it.
 
 ```yaml
 apiVersion: inference.networking.k8s.io/v1
@@ -618,7 +618,7 @@ curl -s http://<GW_IP>/v1/completions \
 ```
 
 ### Implementing routing to expose networks
-> Cilium BGP : Advertise pod CIDRs and Service IPs to an upstream router. Configuration links three resources: ClusterConfig → PeerConfig → Advertisement. Enable it with `bgpControlPlane.enabled=true`.
+> Cilium BGP : With BGP, Cilium advertises pod CIDRs and Service IPs to an upstream router, so that the outside network knows how to reach them. The configuration links three resources together in a chain: ClusterConfig → PeerConfig → Advertisement. None of this works until you enable the feature with `bgpControlPlane.enabled=true`.
 
 ```yaml
 apiVersion: cilium.io/v2
@@ -676,7 +676,7 @@ cilium bgp routes advertised ipv4 unicast
 ```
 
 ### Configuring egress gateways for cluster exit traffic
-> Egress Gateway : Send selected pods' external traffic through a gateway node with a fixed source IP. Requires `egressGateway.enabled=true`, `bpf.masquerade=true` and `kubeProxyReplacement=true`. The `egressIP` must already exist on the gateway node.
+> Egress Gateway : An egress gateway sends the external traffic of selected pods through a gateway node, so that it leaves the cluster with a fixed source IP. For this to work, Cilium needs `egressGateway.enabled=true`, `bpf.masquerade=true` and `kubeProxyReplacement=true`. Also note that the `egressIP` must already exist on the gateway node before you apply the policy.
 
 ```yaml
 apiVersion: cilium.io/v2
@@ -705,7 +705,7 @@ kubectl -n payments exec deploy/billing -- curl -s http://203.0.113.20/whoami
 ```
 
 ### Implementing cross-cluster service discovery and load balancing
-> Cluster Mesh : Each cluster needs a unique `cluster.name` and `cluster.id`, non-overlapping pod CIDRs and a shared Cilium CA. A Service with the same name and namespace in both clusters, annotated `service.cilium.io/global: "true"`, load-balances across both.
+> Cluster Mesh : Before you connect clusters, make sure each one has a unique `cluster.name` and `cluster.id`, that their pod CIDRs do not overlap, and that they share the same Cilium CA. Once they are connected, a Service that has the same name and namespace in both clusters and is annotated with `service.cilium.io/global: "true"` load-balances across both of them.
 
 ```bash
 # Share cluster 1's CA with cluster 2 before installing there
@@ -738,10 +738,10 @@ spec:
 
 ## 4. Network Security and Policy (25%)
 
-Following are the subtopics under Network Security and Policy
+This section walks through each subtopic of the Network Security and Policy domain.
 
 ### Securing traffic with network policies
-> NetworkPolicy vs CiliumNetworkPolicy : Kubernetes NetworkPolicy is L3/L4 and allow-only. CiliumNetworkPolicy adds L7 (HTTP, DNS), FQDN, entities and explicit deny rules. Default-deny egress also blocks DNS, so always re-allow `kube-dns`.
+> NetworkPolicy vs CiliumNetworkPolicy : A Kubernetes NetworkPolicy works only at L3/L4 and can only allow traffic. A CiliumNetworkPolicy goes further and adds L7 (HTTP, DNS) rules, FQDN rules, entities and explicit deny rules. Be careful with a default-deny egress policy, because it also blocks DNS, so always re-allow traffic to `kube-dns`.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -754,7 +754,7 @@ spec:
   policyTypes: ["Ingress", "Egress"]
 ```
 
-> L7 Policy : Requests that match the L4 rule but not the HTTP rule get `403 Access denied`. An L3/L4 drop shows up as a timeout.
+> L7 Policy : The two kinds of denial look different from the client side, which helps when you debug. A request that matches the L4 rule but not the HTTP rule gets a `403 Access denied` response, whereas an L3/L4 drop shows up as a timeout.
 
 ```yaml
 apiVersion: cilium.io/v2
@@ -786,7 +786,7 @@ hubble observe -n shop --verdict DROPPED
 ```
 
 ### Implementing node and Pod level encryption
-> WireGuard : Cilium encrypts pod traffic between nodes over `cilium_wg0` (UDP 51871). Add `encryption.nodeEncryption=true` to also encrypt node-to-node traffic.
+> WireGuard : When WireGuard is enabled, Cilium encrypts pod traffic between nodes and sends it over the `cilium_wg0` interface (UDP 51871). If you also want traffic between the nodes themselves to be encrypted, add `encryption.nodeEncryption=true`.
 
 ```bash
 cilium upgrade --reuse-values --set encryption.enabled=true --set encryption.type=wireguard
@@ -800,7 +800,7 @@ tcpdump -i eth0 -nn udp port 51871 -c 10
 ```
 
 ### Managing TLS certificates for Gateway API
-> HTTPS Listener : Store the cert in a `kubernetes.io/tls` Secret and reference it from the listener. A Secret in another namespace needs a `ReferenceGrant`. cert-manager can issue the Secret for you.
+> HTTPS Listener : To serve HTTPS, store the certificate in a `kubernetes.io/tls` Secret and reference it from the Gateway listener. If the Secret is in a different namespace from the Gateway, you also need a `ReferenceGrant` to allow that reference. Instead of creating the Secret by hand, you can also let cert-manager issue it for you.
 
 ```bash
 kubectl -n web create secret tls shop-tls --cert=tls.crt --key=tls.key
@@ -826,7 +826,7 @@ openssl s_client -connect <GW_IP>:443 -servername shop.example.com </dev/null 2>
 ```
 
 ### Implementing Pod-level authentication and authorization
-> Istio Ambient : ztunnel gives every enrolled pod mTLS and a SPIFFE identity (L4). A waypoint adds L7 features. `PeerAuthentication` `STRICT` rejects non-mesh clients.
+> Istio Ambient : In ambient mode, ztunnel gives every enrolled pod mTLS and a SPIFFE identity at L4. When you need L7 features, you add a waypoint on top. To accept only mesh traffic, set a `PeerAuthentication` to `STRICT`, which rejects clients that are not part of the mesh.
 
 ```bash
 istioctl install --set profile=ambient --skip-confirmation
@@ -835,7 +835,7 @@ istioctl waypoint apply -n shop --enroll-namespace --wait
 istioctl ztunnel-config workloads
 ```
 
-> AuthorizationPolicy : Use `selector` for L4 rules enforced by ztunnel, and `targetRefs` to a Service for L7 rules enforced by the waypoint. L7 denials return `RBAC: access denied`; L4 denials reset the connection.
+> AuthorizationPolicy : How you attach the policy decides who enforces it. Use `selector` for L4 rules, which ztunnel enforces, and use `targetRefs` pointing to a Service for L7 rules, which the waypoint enforces. You can tell the two apart when debugging, because L7 denials return `RBAC: access denied`, while L4 denials reset the connection.
 
 ```yaml
 apiVersion: security.istio.io/v1
@@ -872,10 +872,10 @@ spec:
 
 ## 5. Observability (15%)
 
-Following are the subtopics under Observability
+This section walks through each subtopic of the Observability domain.
 
 ### Analyzing network health using metrics
-> Hubble : Hubble records every flow with its verdict and drop reason. Use the CLI or the Hubble UI service map to find where traffic is dropped.
+> Hubble : Hubble records every network flow together with its verdict and, for dropped packets, the drop reason. You can use either the CLI or the service map in the Hubble UI to find out where traffic is being dropped.
 
 ```bash
 cilium hubble port-forward &
@@ -885,7 +885,7 @@ hubble observe --protocol http --http-status 5+
 hubble observe --protocol dns
 ```
 
-> Prometheus : Start broad (which service?), then narrow to the workload and pod.
+> Prometheus : Start with broad queries that tell you which service has a problem, and then narrow down to the workload and finally the pod.
 
 ```promql
 up == 0
@@ -896,10 +896,10 @@ sum by (rcode) (rate(coredns_dns_responses_total{rcode=~"SERVFAIL|NXDOMAIN"}[5m]
 ```
 
 ### Troubleshooting end-to-end network performance with tracing
-> Jaeger : A trace is a tree of spans, one per hop. Sort by longest first, open a slow trace, and find the span that holds the time. A long parent with short children means the time is spent in that service. In ambient mode, spans come from waypoints and gateways, not ztunnel.
+> Jaeger : A trace is a tree of spans, with one span for each hop the request takes. Sort the traces with the longest first, open a slow one, and find the span that holds most of the time. If a parent span is long but its children are short, the time is being spent inside that service itself. Note that in ambient mode, spans come from waypoints and gateways, not from ztunnel.
 
 ### Auditing traffic with logs
-> Envoy Access Logs : Envoy Gateway writes JSON access logs with the path, status, response flags, user agent and client IP. Use them to find who is sending bad traffic to a path.
+> Envoy Access Logs : Envoy Gateway writes access logs in JSON, and each entry records the path, status, response flags, user agent and client IP. This makes the logs a good place to find out who is sending bad traffic to a particular path.
 
 ```bash
 kubectl -n envoy-gateway-system logs -l gateway.envoyproxy.io/owning-gateway-name=<gw> -c envoy --tail=-1 \
@@ -924,10 +924,10 @@ kubectl -n istio-system logs -l app=ztunnel | grep -iE "policy rejection|denied"
 
 | File | Purpose |
 |------|---------|
-| [study-notes/](./study-notes/) | One file per exam domain: concepts, YAML, verification and troubleshooting |
-| [PRACTICE_QUESTIONS.md](./PRACTICE_QUESTIONS.md) | Exam-style scenario tasks with hidden solutions |
-| [CHEATSHEET.md](./CHEATSHEET.md) | One-page command reference for every tool on the exam |
-| [EXAM_GUIDE.md](./EXAM_GUIDE.md) | Exam environment, exam-day strategy and FAQs |
+| [study-notes/](./study-notes/) | One file per exam domain, covering concepts, YAML, verification and troubleshooting |
+| [PRACTICE_QUESTIONS.md](./PRACTICE_QUESTIONS.md) | Exam-style scenario tasks, with the solutions hidden until you open them |
+| [CHEATSHEET.md](./CHEATSHEET.md) | A one-page command reference for every tool used in the exam |
+| [EXAM_GUIDE.md](./EXAM_GUIDE.md) | What the exam environment looks like, how to approach exam day, and FAQs |
 
 ---
 
@@ -944,6 +944,6 @@ kubectl -n istio-system logs -l app=ztunnel | grep -iE "policy rejection|denied"
 
 ## Contributing
 
-Corrections and additions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md).
+Corrections and additions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) to see how to contribute.
 
 > ⭐ If this guide helped you, please star the repo!

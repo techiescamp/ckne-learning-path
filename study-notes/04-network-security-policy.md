@@ -1,8 +1,8 @@
 # Domain 4: Network Security and Policy (25%)
 
-> **Exam Weight: 25%**: Network policies (L3/L4/L7), node and pod encryption, TLS for Gateway API, pod-level authentication and authorization.
+> **Exam Weight: 25%**: This domain covers network policies at L3, L4 and L7, encryption of node and pod traffic, TLS for the Gateway API, and authentication and authorization between pods.
 
-The second of the two heaviest domains. It covers two enforcement layers: the **CNI** (Kubernetes NetworkPolicy and CiliumNetworkPolicy) and the **service mesh** (Istio ambient mTLS and AuthorizationPolicy). Know which layer a task is asking for.
+This is one of the two heaviest domains in the exam. It covers two different layers that can enforce security. The first is the **CNI**, which enforces Kubernetes NetworkPolicy and CiliumNetworkPolicy. The second is the **service mesh**, which uses Istio ambient mTLS and AuthorizationPolicy. Before you start a task, work out which of these two layers it is asking about, because each layer uses different resources and different debugging tools.
 
 ## Index
 
@@ -18,15 +18,19 @@ The second of the two heaviest domains. It covers two enforcement layers: the **
 
 ## 1. NetworkPolicy vs CiliumNetworkPolicy
 
+Kubernetes has a built-in NetworkPolicy resource, and Cilium adds its own policy types on top of it with more features. The table below shows how they differ.
+
 | | Kubernetes `NetworkPolicy` | `CiliumNetworkPolicy` (CNP) / `CiliumClusterwideNetworkPolicy` (CCNP) |
 |--|---------------------------|----------------------------------------------------------------------|
-| Scope | Namespaced | Namespaced / cluster-wide |
-| Layers | L3/L4 | L3/L4 **and L7** (HTTP, DNS) |
-| Selectors | Pod, namespace, ipBlock | Endpoints, entities (`world`, `host`, `kube-apiserver`, `cluster`, ...), CIDR, **FQDN**, services |
-| Deny rules | Allow-only | Explicit `ingressDeny` / `egressDeny` (deny wins) |
-| Node policies | No | Yes (CCNP with `nodeSelector`) |
+| Scope | Namespaced only | Namespaced (CNP) or cluster-wide (CCNP) |
+| Layers | L3 and L4 only | L3/L4 **and L7** (HTTP, DNS) |
+| Selectors | Pods, namespaces and ipBlock | Endpoints, entities (`world`, `host`, `kube-apiserver`, `cluster`, ...), CIDR ranges, **FQDN** names and services |
+| Deny rules | Allow rules only, no deny | Explicit `ingressDeny` / `egressDeny` rules, and a deny always wins over an allow |
+| Node policies | Not supported | Supported through a CCNP with `nodeSelector` |
 
-**Shared semantics:** a pod is non-isolated until some policy selects it for a direction. Once selected, only traffic that some policy allows gets through, and all policies selecting it are additive.
+**Shared semantics:** Both policy types follow the same basic model. A pod accepts all traffic in a direction (ingress or egress) until at least one policy selects it for that direction. Once a policy selects it, the pod only accepts traffic that some policy explicitly allows. If several policies select the same pod, their rules add up, so traffic gets through if any one of them allows it.
+
+Use these commands to list the policies in the cluster and to see which policies and endpoints the Cilium agent knows about.
 
 ```bash
 kubectl get netpol,cnp -A
@@ -41,6 +45,8 @@ kubectl -n kube-system exec ds/cilium -- cilium-dbg endpoint list
 
 ### Default deny for a namespace
 
+This policy selects every pod in the namespace (`podSelector: {}`) and lists both directions, so all ingress and egress traffic is blocked until another policy allows it.
+
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -53,9 +59,11 @@ spec:
 ```
 
 > [!WARNING]
-> Default-deny egress also blocks DNS. Pair it with an allow to `kube-dns` on UDP and TCP 53, or every name lookup will time out.
+> A default-deny egress policy also blocks DNS, because DNS queries are egress traffic to `kube-dns`. Always pair it with a rule that allows egress to `kube-dns` on UDP and TCP port 53. Otherwise, every name lookup in the namespace will time out.
 
 ### Allow selected workloads on specific ports (Kubernetes)
+
+This policy allows ingress to the `api` pods on TCP port 8080, either from `frontend` pods in the same namespace or from any pod in the `monitoring` namespace.
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -81,9 +89,11 @@ spec:
       port: 8080
 ```
 
-`namespaceSelector` and `podSelector` in the **same** list item mean AND (that label in that namespace). As **separate** items they mean OR.
+Be careful with how you group selectors. If `namespaceSelector` and `podSelector` are in the **same** list item, they are combined with AND, which means only pods with that label in that namespace are allowed. If they are **separate** items, as in the example above, they are combined with OR, so a match on either one is enough.
 
 ### The same idea in Cilium, plus DNS and FQDN egress
+
+The CiliumNetworkPolicy below gives the `api` pods the same ingress rule. It also limits their egress to three destinations: DNS on `kube-dns`, one external name through `toFQDNs`, and the Kubernetes API server.
 
 ```yaml
 apiVersion: cilium.io/v2
@@ -125,9 +135,11 @@ spec:
     - kube-apiserver
 ```
 
-`toFQDNs` only works when the DNS rule above is present, because Cilium learns IPs from DNS responses it proxies.
+Note that `toFQDNs` only works when the DNS rule above is also present. Cilium learns which IPs belong to a name by proxying the pod's DNS queries and reading the responses, so without the DNS rule it never sees those responses and cannot allow the IPs.
 
 ### Explicit deny
+
+This policy blocks egress from every pod in the namespace to `10.200.0.0/16`.
 
 ```yaml
 apiVersion: cilium.io/v2
@@ -145,7 +157,7 @@ spec:
     - 10.200.0.0/16
 ```
 
-Like allow policies, a deny policy puts the selected pods into default-deny for that direction, so pair it with an allow (here `toEntities: all`) or everything else is blocked too. Deny rules do not support L7 rules or `toFQDNs`.
+A deny policy behaves like an allow policy in one important way: it puts the selected pods into default-deny for that direction. That is why this example pairs the deny with an allow (here `toEntities: all`). Without the allow, all other egress traffic would be blocked as well. Also note that deny rules cannot contain L7 rules or `toFQDNs`.
 
 Reference: [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/) | [Cilium L3 Policy](https://docs.cilium.io/en/stable/security/policy/layer3/)
 
@@ -153,7 +165,7 @@ Reference: [Network Policies](https://kubernetes.io/docs/concepts/services-netwo
 
 ## 3. L7 Policies with Cilium
 
-Adding `rules.http` to a `toPorts` block sends that traffic through Cilium's Envoy proxy. Only matching requests are allowed. Everything else on that port gets **HTTP 403 Access denied** (not a dropped connection).
+When you add `rules.http` to a `toPorts` block, Cilium sends the traffic on that port through its Envoy proxy, which checks each HTTP request. Only requests that match a rule are allowed. Every other request on that port gets an **HTTP 403 Access denied** response instead of a dropped connection, which helps you tell an L7 denial apart from an L3/L4 one.
 
 ```yaml
 apiVersion: cilium.io/v2
@@ -183,17 +195,21 @@ spec:
           - "X-Session: .+"
 ```
 
+To test the policy, send requests from the frontend and watch for drops with Hubble. With the policy above, the request to `/products` should succeed and the request to `/admin` should return 403.
+
 ```bash
 kubectl -n shop exec deploy/frontend -- curl -s -o /dev/null -w '%{http_code}\n' api:8080/products
 kubectl -n shop exec deploy/frontend -- curl -s -o /dev/null -w '%{http_code}\n' api:8080/admin
 hubble observe -n shop --protocol http --verdict DROPPED
 ```
 
+The result of a test request tells you which layer blocked it:
+
 | Result | Meaning |
 |--------|---------|
-| Timeout | L3/L4 drop: no rule allows the identity or port |
-| `403 Access denied` | L4 allowed, L7 rule did not match (method, path or header) |
-| Works for one path only | Path regex anchored or too narrow |
+| Timeout | L3/L4 drop: no rule allows this identity or port |
+| `403 Access denied` | The L4 rule allowed the connection, but no L7 rule matched the method, path or header |
+| Works for one path only | The path regex is anchored or too narrow |
 
 Reference: [Cilium Layer 7 Policy](https://docs.cilium.io/en/stable/security/policy/layer7/)
 
@@ -201,7 +217,7 @@ Reference: [Cilium Layer 7 Policy](https://docs.cilium.io/en/stable/security/pol
 
 ## 4. Node and Pod Encryption with WireGuard
 
-Cilium can encrypt all pod-to-pod traffic **between nodes** with WireGuard. Each node gets a key pair, publishes its public key on its `CiliumNode`, and tunnels traffic over `cilium_wg0` (UDP 51871). Same-node traffic does not leave the host and is not encrypted.
+Cilium can use WireGuard to encrypt all pod-to-pod traffic that travels **between nodes**. Each node generates a key pair and publishes its public key on its `CiliumNode` object, so that the other nodes can find it. Traffic to other nodes then goes through the `cilium_wg0` tunnel on UDP port 51871. Traffic between pods on the same node never leaves the host, so it is not encrypted.
 
 ```bash
 # New install
@@ -231,9 +247,9 @@ tcpdump -i cilium_wg0 -nn -c 10
 ```
 
 > [!NOTE]
-> `Peers` should equal the number of other nodes. A peer count of 0, or traffic to TCP/80 visible in plaintext on `eth0`, means encryption is not in effect for that path. If large requests hang after enabling it, check the MTU. `cilium-dbg debuginfo --output json | jq .encryption` shows the full encryption state.
+> In the status output, `Peers` should equal the number of other nodes in the cluster. If the peer count is 0, or if you can see traffic to TCP/80 in plaintext on `eth0`, encryption is not in effect for that path. If large requests hang after you enable encryption, check the MTU. To see the full encryption state, run `cilium-dbg debuginfo --output json | jq .encryption`.
 
-IPsec (`encryption.type=ipsec`, with a pre-shared key Secret) is the alternative mode. Pod-to-pod mTLS at the mesh layer is covered under Istio below.
+WireGuard is not the only option. Cilium also supports IPsec (`encryption.type=ipsec`), which uses a pre-shared key stored in a Secret. Encryption at the mesh layer, in the form of pod-to-pod mTLS, is covered in the Istio section below.
 
 Reference: [Cilium WireGuard Encryption](https://docs.cilium.io/en/stable/security/network/encryption-wireguard/)
 
@@ -242,6 +258,8 @@ Reference: [Cilium WireGuard Encryption](https://docs.cilium.io/en/stable/securi
 ## 5. TLS Certificates for Gateway API
 
 ### Create the certificate Secret
+
+The Gateway reads its certificate from a Secret of type `kubernetes.io/tls`. For practice, you can create a self-signed certificate with `openssl` and store it in a Secret.
 
 ```bash
 # Self-signed for practice
@@ -252,11 +270,13 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 kubectl -n web create secret tls shop-tls --cert=tls.crt --key=tls.key
 ```
 
-When a task provides the cert and key files, use them as given.
+If a task gives you the certificate and key files, use them exactly as given instead of generating your own.
 
 ### Issuing certificates with cert-manager
 
-cert-manager can create and renew the Secret for you. Either request it explicitly with a `Certificate`, or annotate the Gateway and let cert-manager create one Certificate per unique Secret name in `certificateRefs`. The listener needs a `hostname`, `tls.mode: Terminate` and a Secret in the same namespace. Gateway API support must be on (Helm value `config.gatewayAPI.enabled=true`), and the Gateway API CRDs must exist before cert-manager starts, or cert-manager must be restarted.
+Instead of creating the Secret by hand, you can let cert-manager create and renew it for you. There are two ways to do this. You can request the certificate explicitly with a `Certificate` resource (Option A below), or you can annotate the Gateway (Option B), in which case cert-manager creates one Certificate for each unique Secret name in `certificateRefs`.
+
+The listener needs a `hostname`, `tls.mode: Terminate` and a Secret in the same namespace. Gateway API support must also be turned on in cert-manager with the Helm value `config.gatewayAPI.enabled=true`. Finally, the Gateway API CRDs must exist before cert-manager starts. If they are installed later, restart cert-manager so that it picks them up.
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -297,6 +317,8 @@ kubectl -n cert-manager logs deploy/cert-manager
 ```
 
 ### HTTPS listener (TLS termination)
+
+The Gateway below terminates TLS on port 443 with the `shop-tls` Secret. It also has an HTTP listener on port 80, which is used only to redirect clients to HTTPS. Each HTTPRoute attaches to one of the listeners through `sectionName`.
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -357,6 +379,8 @@ spec:
 
 ### Certificates in another namespace
 
+If the Secret lives in a different namespace from the Gateway (here `certs`), the Secret's namespace must allow the reference with a ReferenceGrant. Otherwise, the listener reports `RefNotPermitted`.
+
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: ReferenceGrant
@@ -373,9 +397,11 @@ spec:
     kind: Secret
 ```
 
-`TLSRoute` with `mode: Passthrough` hands the encrypted stream to the backend untouched. `BackendTLSPolicy` makes the gateway re-encrypt traffic to the backend.
+Two related resources are also worth knowing. A `TLSRoute` with `mode: Passthrough` does not terminate TLS at the gateway; it hands the encrypted stream to the backend untouched. A `BackendTLSPolicy`, on the other hand, makes the gateway re-encrypt the traffic before sending it to the backend.
 
 ### Verify and troubleshoot
+
+To test the listener, get the Gateway address and send requests with the correct hostname. Use `--resolve` so that curl sends the right SNI name, and use `openssl s_client` to inspect the certificate that is actually served.
 
 ```bash
 GW_IP=$(kubectl -n web get gateway web-gw -o jsonpath='{.status.addresses[0].value}')
@@ -391,10 +417,10 @@ kubectl -n web describe gateway web-gw
 
 | Condition / symptom | Cause |
 |---------------------|-------|
-| Listener `ResolvedRefs=False`, `InvalidCertificateRef` | Secret missing, wrong name, or not type `kubernetes.io/tls` |
-| Listener `ResolvedRefs=False`, `RefNotPermitted` | Cross-namespace Secret without a ReferenceGrant |
-| Wrong cert served | SNI hostname does not match the listener `hostname` (always pass `-servername` / `--resolve`) |
-| `certificate has expired` / name mismatch | Check `-dates` and `subjectAltName` from `openssl x509` |
+| Listener `ResolvedRefs=False`, `InvalidCertificateRef` | The Secret is missing, has the wrong name, or is not of type `kubernetes.io/tls` |
+| Listener `ResolvedRefs=False`, `RefNotPermitted` | The Secret is in another namespace and there is no ReferenceGrant for it |
+| Wrong cert served | The SNI hostname does not match the listener `hostname`, so always pass `-servername` / `--resolve` |
+| `certificate has expired` / name mismatch | Check `-dates` and `subjectAltName` in the `openssl x509` output |
 
 Reference: [Gateway API TLS](https://gateway-api.sigs.k8s.io/guides/tls/)
 
@@ -404,17 +430,21 @@ Reference: [Gateway API TLS](https://gateway-api.sigs.k8s.io/guides/tls/)
 
 ### Ambient architecture
 
+Ambient mode splits the mesh into two layers. Every mesh pod gets L4 features from ztunnel, and only traffic that needs L7 features is sent through a waypoint.
+
 | Component | Layer | Role |
 |-----------|-------|------|
-| **ztunnel** (DaemonSet) | L4 | Transparent mTLS (HBONE) between mesh pods, SPIFFE identity per ServiceAccount, L4 AuthorizationPolicy |
-| **waypoint** (Envoy Deployment, per namespace or service) | L7 | HTTP routing, L7 AuthorizationPolicy, retries, telemetry |
-| istio-cni | node | Redirects pod traffic into ztunnel without sidecars |
+| **ztunnel** (DaemonSet) | L4 | Provides transparent mTLS (HBONE) between mesh pods, gives each ServiceAccount a SPIFFE identity, and enforces L4 AuthorizationPolicy |
+| **waypoint** (Envoy Deployment, per namespace or service) | L7 | Handles HTTP routing, L7 AuthorizationPolicy, retries and telemetry |
+| istio-cni | node | Redirects pod traffic into ztunnel, so no sidecars are needed |
 
 ```text
 client pod ─► ztunnel(node A) ══mTLS/HBONE══► [waypoint, if L7] ══► ztunnel(node B) ─► server pod
 ```
 
 ### Install and enroll workloads
+
+Install Istio with the ambient profile, then add workloads to the mesh by labelling their namespace. Because there is no sidecar to inject, the pods do not need to restart.
 
 ```bash
 istioctl install --set profile=ambient --skip-confirmation
@@ -435,15 +465,19 @@ istioctl ztunnel-config workloads
 ```
 
 > [!NOTE]
-> **Running ambient on Cilium:** install Cilium with `cni.exclusive=false`, and with kube-proxy replacement also `socketLB.hostNamespaceOnly=true`. `bpf.masquerade=true` is not supported with ambient. If you use Cilium default-deny policies, allow ingress from `169.254.7.127/32`, the link-local address Istio SNATs kubelet health probes to.
+> **Running ambient on Cilium:** Cilium has to share the node with istio-cni, so install it with `cni.exclusive=false`. If you also use kube-proxy replacement, set `socketLB.hostNamespaceOnly=true` as well. Note that `bpf.masquerade=true` is not supported with ambient. If you use Cilium default-deny policies, allow ingress from `169.254.7.127/32`, because Istio SNATs kubelet health probes to that link-local address and the probes would otherwise be blocked.
 
 ### Mesh vs non-mesh workloads
+
+Whether traffic is encrypted depends on whether both sides are in the mesh and on the mTLS mode of the server:
 
 | Client | Server | Default (PERMISSIVE) | With `STRICT` |
 |--------|--------|----------------------|---------------|
 | mesh | mesh | mTLS | mTLS |
 | non-mesh | mesh | plaintext accepted | **rejected** |
 | mesh | non-mesh | plaintext | plaintext |
+
+To stop non-mesh clients from reaching mesh workloads, set the mode to `STRICT` with a PeerAuthentication.
 
 ```yaml
 # Refuse plaintext (non-mesh) clients for every workload in the namespace
@@ -459,10 +493,10 @@ spec:
 
 ### L4 AuthorizationPolicy (enforced by ztunnel)
 
-Uses `selector`. Only L4 attributes are available: source principals and namespaces, IPs and ports.
+An L4 policy uses `selector` to choose the workloads it applies to. Because ztunnel only works at L4, the policy can only match L4 attributes: source principals and namespaces, IP addresses and ports.
 
 > [!WARNING]
-> When a waypoint is in the path, the destination ztunnel sees the **waypoint's** identity, not the original client's. A ztunnel policy must then also allow `cluster.local/ns/<ns>/sa/waypoint`, or enforce the client identity at the waypoint with `targetRefs` instead.
+> When a waypoint is in the path, the destination ztunnel sees the **waypoint's** identity instead of the original client's identity. In that case, a ztunnel policy must also allow `cluster.local/ns/<ns>/sa/waypoint`. The alternative is to enforce the client identity at the waypoint by using `targetRefs`.
 
 ```yaml
 apiVersion: security.istio.io/v1
@@ -486,7 +520,7 @@ spec:
 
 ### L7 AuthorizationPolicy (enforced by the waypoint)
 
-Uses `targetRefs` pointing at the Service (or the waypoint Gateway). HTTP attributes such as methods, paths and headers are only available here.
+An L7 policy uses `targetRefs` to point at the Service (or at the waypoint Gateway) instead of using `selector`. HTTP attributes such as methods, paths and headers are only available at this layer, because the waypoint is the component that handles HTTP.
 
 ```yaml
 apiVersion: security.istio.io/v1
@@ -527,9 +561,11 @@ spec:
         paths: ["/admin*"]
 ```
 
-**Evaluation order:** CUSTOM → DENY → ALLOW. If any ALLOW policy targets a workload, requests that match none of its rules are denied.
+**Evaluation order:** Istio evaluates CUSTOM policies first, then DENY, then ALLOW. Keep in mind that once any ALLOW policy targets a workload, every request that matches none of its rules is denied.
 
 ### Troubleshooting authorization failures
+
+When a request is denied, first find out which identity the client has, and then check which layer rejected the request.
 
 ```bash
 # Who is the client, as the mesh sees it?
@@ -544,13 +580,13 @@ istioctl analyze -n shop
 
 | Symptom | Layer / cause |
 |---------|---------------|
-| `RBAC: access denied` (HTTP 403) | L7 policy at the waypoint denied it |
-| `Connection reset` / `recv failure` | L4 policy at ztunnel denied it, or STRICT mTLS rejected a non-mesh client |
-| L7 policy has no effect | No waypoint, or the Service is not using it (`istio.io/use-waypoint`) |
-| L7 ALLOW via `selector` blocks everything | ztunnel cannot evaluate L7, so the rule is skipped and all traffic is denied (connection reset). Use `targetRefs` |
-| L7-only DENY via `selector` does nothing | ztunnel skips the L7 rule. Use `targetRefs` |
-| Principal never matches | Wrong ServiceAccount or namespace in `cluster.local/ns/<ns>/sa/<sa>` |
-| Non-mesh client still gets through | PeerAuthentication not `STRICT`, or target namespace not labelled ambient |
+| `RBAC: access denied` (HTTP 403) | An L7 policy at the waypoint denied the request |
+| `Connection reset` / `recv failure` | An L4 policy at ztunnel denied it, or STRICT mTLS rejected a non-mesh client |
+| L7 policy has no effect | There is no waypoint, or the Service is not using it (check `istio.io/use-waypoint`) |
+| L7 ALLOW via `selector` blocks everything | ztunnel cannot evaluate L7 rules, so it skips the rule and denies all traffic (connection reset). Use `targetRefs` instead |
+| L7-only DENY via `selector` does nothing | ztunnel skips the L7 rule, so nothing is denied. Use `targetRefs` instead |
+| Principal never matches | The ServiceAccount or namespace in `cluster.local/ns/<ns>/sa/<sa>` is wrong |
+| Non-mesh client still gets through | PeerAuthentication is not `STRICT`, or the target namespace is not labelled for ambient |
 
 Reference: [Istio Ambient Mode](https://istio.io/latest/docs/ambient/) | [Istio Authorization Policy](https://istio.io/latest/docs/reference/config/security/authorization-policy/)
 
@@ -558,17 +594,19 @@ Reference: [Istio Ambient Mode](https://istio.io/latest/docs/ambient/) | [Istio 
 
 ## 7. Hands-on Checklist
 
-- [ ] Explain when to use a Kubernetes NetworkPolicy vs a CiliumNetworkPolicy
-- [ ] Build default-deny for a namespace and re-open only DNS and one app port
-- [ ] Allow traffic between selected workloads only, and deny everything else
-- [ ] Restrict a pod's egress to one external FQDN
-- [ ] Allow only specific HTTP methods/paths with a Cilium L7 rule, and explain the 403 vs timeout difference
-- [ ] Enable WireGuard and prove from the agent status and `tcpdump` that cross-node traffic is encrypted
-- [ ] Serve HTTPS from a Gateway with a provided certificate, including a cross-namespace Secret
-- [ ] Issue a Gateway certificate with cert-manager and confirm the Certificate is Ready
-- [ ] Verify the served certificate with `openssl s_client` and `curl --resolve`
-- [ ] Enroll a namespace in Istio ambient and confirm ztunnel sees it
-- [ ] Block non-mesh workloads from reaching mesh services
-- [ ] Write L4 (ztunnel) and L7 (waypoint) AuthorizationPolicies and know which one a task needs
+Before you move on, make sure you can do each of these tasks on a real cluster:
+
+- [ ] Explain when a Kubernetes NetworkPolicy is enough and when you need a CiliumNetworkPolicy
+- [ ] Create a default-deny policy for a namespace, then open only DNS and one application port
+- [ ] Allow traffic only between selected workloads and deny everything else
+- [ ] Restrict a pod's egress so that it can reach only one external FQDN
+- [ ] Allow only specific HTTP methods and paths with a Cilium L7 rule, and explain why a blocked request sometimes returns 403 and sometimes times out
+- [ ] Enable WireGuard, then use the agent status and `tcpdump` to prove that cross-node traffic is encrypted
+- [ ] Serve HTTPS from a Gateway with a certificate you are given, including one stored in a Secret in another namespace
+- [ ] Issue a Gateway certificate with cert-manager and confirm that the Certificate becomes Ready
+- [ ] Check the certificate the Gateway serves with `openssl s_client` and `curl --resolve`
+- [ ] Enroll a namespace in Istio ambient mode and confirm that ztunnel sees its workloads
+- [ ] Block workloads outside the mesh from reaching services inside the mesh
+- [ ] Write both an L4 (ztunnel) and an L7 (waypoint) AuthorizationPolicy, and decide which one a task needs
 - [ ] Restrict access to a specific application endpoint by path and method
-- [ ] Debug a denied request from ztunnel / waypoint logs
+- [ ] Debug a denied request using the ztunnel and waypoint logs

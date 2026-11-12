@@ -1,6 +1,6 @@
 # CKNE Command Cheatsheet
 
-> One-line reminders for each tool. For the full explanation and YAML, see the study note for that domain.
+> This page gives you short, one-line reminders for each tool, so you can find a command quickly during practice. If you need the full explanation and the YAML behind a command, open the study note for that domain.
 
 ## Cilium
 
@@ -26,16 +26,16 @@ cilium connectivity test
 
 | Helm value | Feature |
 |------------|---------|
-| `kubeProxyReplacement=true` + `k8sServiceHost` / `k8sServicePort` | No kube-proxy |
-| `bpf.masquerade=true` | eBPF SNAT |
-| `egressGateway.enabled=true` | Egress gateway |
-| `bgpControlPlane.enabled=true` | BGP |
-| `encryption.enabled=true`, `encryption.type=wireguard` | WireGuard |
-| `encryption.nodeEncryption=true` | Also encrypt node traffic |
-| `cluster.name`, `cluster.id` | Cluster Mesh identity |
-| `gatewayAPI.enabled=true` | Cilium as Gateway API controller |
-| `cni.exclusive=false` | Coexist with Multus / Istio CNI |
-| `hubble.relay.enabled=true`, `hubble.ui.enabled=true` | Hubble |
+| `kubeProxyReplacement=true` + `k8sServiceHost` / `k8sServicePort` | Runs Cilium without kube-proxy, so it needs the real API server address |
+| `bpf.masquerade=true` | Does SNAT (masquerading) in eBPF |
+| `egressGateway.enabled=true` | Turns on the egress gateway |
+| `bgpControlPlane.enabled=true` | Turns on the BGP control plane |
+| `encryption.enabled=true`, `encryption.type=wireguard` | Encrypts Pod traffic with WireGuard |
+| `encryption.nodeEncryption=true` | Encrypts node traffic as well as Pod traffic |
+| `cluster.name`, `cluster.id` | Give each cluster its own identity for Cluster Mesh |
+| `gatewayAPI.enabled=true` | Lets Cilium act as the Gateway API controller |
+| `cni.exclusive=false` | Lets Cilium share the node with Multus or the Istio CNI |
+| `hubble.relay.enabled=true`, `hubble.ui.enabled=true` | Turns on Hubble Relay and the Hubble UI |
 
 ## Hubble
 
@@ -63,10 +63,10 @@ kubectl -n istio-system logs -l app=ztunnel | grep -iE "policy rejection|denied"
 
 | Need | Resource |
 |------|----------|
-| Reject non-mesh (plaintext) clients | `PeerAuthentication` `mtls.mode: STRICT` |
-| Allow/deny by identity and port | `AuthorizationPolicy` with `selector` (ztunnel) |
-| Allow/deny by HTTP method/path | `AuthorizationPolicy` with `targetRefs: Service` + waypoint |
-| Principal format | `cluster.local/ns/<ns>/sa/<serviceaccount>` |
+| Reject clients outside the mesh that send plaintext | `PeerAuthentication` `mtls.mode: STRICT` |
+| Allow or deny traffic by identity and port | `AuthorizationPolicy` with `selector` (enforced by ztunnel) |
+| Allow or deny traffic by HTTP method or path | `AuthorizationPolicy` with `targetRefs: Service`, which needs a waypoint |
+| Write the principal (identity) in this format | `cluster.local/ns/<ns>/sa/<serviceaccount>` |
 
 ## Gateway API / Envoy Gateway
 
@@ -136,4 +136,4 @@ sum by (rcode) (rate(coredns_dns_responses_total[5m]))
 
 ## Envoy `response_flags`
 
-`UH` no healthy upstream · `UF` upstream connect failure · `UT` upstream timeout · `NR` no route · `URX` retries exhausted · `DC` client disconnected · `RL` rate limited
+When Envoy cannot complete a request, the response flag tells you why. `UH` means there was no healthy upstream, and `UF` means the connection to the upstream failed. `UT` means the upstream timed out, while `NR` means no route matched the request. `URX` means Envoy used up all its retries, `DC` means the client disconnected, and `RL` means the request was rate limited.

@@ -1,15 +1,15 @@
 # CKNE Practice Tasks
 
-> 20 exam-style scenarios covering all 5 domains. Try each one before opening the solution, and time yourself.
+> This page has 20 exam-style scenarios that together cover all 5 domains. Try each task on your own before you open its solution, and time yourself so you get used to working under exam pressure.
 
-**How to use:** read the task, note every exact value (names, namespaces, ports, paths, counts), solve it, then compare. When you get one wrong, rebuild it from scratch the next day.
+**How to use:** Read each task carefully and write down every exact value it gives you, such as names, namespaces, ports, paths and counts, because the exam checks those values precisely. Then solve the task and compare your work with the solution. If you get a task wrong, rebuild it from scratch the next day so the fix sticks.
 
 | Solved | Readiness |
 |--------|-----------|
-| 17–20 | Exam-ready 🟢 |
-| 13–16 | Almost there 🟡 |
-| 9–12 | More practice needed 🟠 |
-| < 9 | Revisit the study notes 🔴 |
+| 17–20 | You are exam-ready 🟢 |
+| 13–16 | You are almost there 🟡 |
+| 9–12 | You need more practice 🟠 |
+| < 9 | Go back to the study notes 🔴 |
 
 ---
 
@@ -17,7 +17,7 @@
 
 ### Task 1: Install Cilium without kube-proxy
 
-A new cluster has no CNI and no kube-proxy. The API server is at `172.18.0.2:6443`. Install Cilium with the Cilium CLI as a full kube-proxy replacement, with eBPF masquerading enabled.
+You have a new cluster that has no CNI and no kube-proxy, and its API server is at `172.18.0.2:6443`. Use the Cilium CLI to install Cilium as a full kube-proxy replacement, and enable eBPF masquerading as well.
 
 <details><summary>Solution</summary>
 
@@ -34,7 +34,7 @@ kubectl -n kube-system exec ds/cilium -- cilium-dbg status | grep -E "KubeProxyR
 
 ### Task 2: Capture backend traffic
 
-Pods of Deployment `api` in namespace `shop` listen on TCP 8080. On node `worker-1`, capture exactly 25 packets destined to port 8080 on any interface, and write them to `/opt/captures/api.pcap`.
+The pods of Deployment `api` in namespace `shop` listen on TCP 8080. On node `worker-1`, capture exactly 25 packets that are going to port 8080 on any interface, and save them to `/opt/captures/api.pcap`.
 
 <details><summary>Solution</summary>
 
@@ -48,7 +48,7 @@ sudo tcpdump -nn -r /opt/captures/api.pcap | wc -l
 
 ### Task 3: Broken NAT path
 
-Requests to the `web` Service (ClusterIP `10.96.120.10:80`) from pods on `worker-2` reach the wrong application. Pods on other nodes work. Find and fix the cause on `worker-2`.
+When pods on `worker-2` send requests to the `web` Service (ClusterIP `10.96.120.10:80`), the requests reach the wrong application. Pods on the other nodes work correctly, so the problem is local to that node. Find the cause on `worker-2` and fix it.
 
 <details><summary>Solution</summary>
 
@@ -60,12 +60,12 @@ sudo iptables-save -t nat | grep 10.96.120.10
 sudo iptables -t nat -L PREROUTING -n --line-numbers
 sudo iptables -t nat -D PREROUTING <line-number>
 ```
-Re-test from a pod on `worker-2`. Also check `tc qdisc show` and `sysctl net.ipv4.ip_forward` if you see latency or drops rather than misrouting.
+After you delete the rule, test again from a pod on `worker-2`. If you see latency or dropped packets instead of traffic going to the wrong place, the cause is probably different, so also check `tc qdisc show` and `sysctl net.ipv4.ip_forward`.
 </details>
 
 ### Task 4: Slow requests from one node
 
-Requests from pods on `worker-1` to any Service take over 300 ms. Other nodes respond in under 5 ms. Find and remove the cause.
+Requests from pods on `worker-1` to any Service take more than 300 ms, while the other nodes respond in under 5 ms. Find what is slowing down `worker-1` and remove it.
 
 <details><summary>Solution</summary>
 
@@ -82,11 +82,11 @@ sudo tc qdisc del dev eth0 root
 
 ### Task 5: Forward a corporate domain
 
-Pods must resolve `*.corp.internal` using the DNS server `10.0.0.53`. All other external names continue to use the node resolver.
+Pods must resolve `*.corp.internal` names through the DNS server `10.0.0.53`. At the same time, all other external names must keep using the node's resolver.
 
 <details><summary>Solution</summary>
 
-Add a top-level server block to the `coredns` ConfigMap in `kube-system`:
+Add a separate top-level server block to the `coredns` ConfigMap in `kube-system`, so that only queries for this domain go to the corporate DNS server:
 
 ```text
 corp.internal:53 {
@@ -103,20 +103,20 @@ kubectl run t --rm -it --image=busybox:1.36 --restart=Never -- nslookup app.corp
 
 ### Task 6: External names fail
 
-Pods resolve `kubernetes.default` but not `example.com`. Fix it so that external lookups use `1.1.1.1`.
+Pods can resolve `kubernetes.default`, but they cannot resolve `example.com`. Fix this so that external lookups go to `1.1.1.1`.
 
 <details><summary>Solution</summary>
 
-In the Corefile, change the `forward` line in `.:53`:
+In the Corefile, change the `forward` line inside the `.:53` block:
 ```text
 forward . 1.1.1.1
 ```
-Check the CoreDNS logs for upstream errors, and check that no NetworkPolicy blocks CoreDNS egress on UDP/TCP 53.
+If lookups still fail, look at the CoreDNS logs for upstream errors, and make sure that no NetworkPolicy blocks CoreDNS egress on UDP/TCP 53.
 </details>
 
 ### Task 7: Service with no healthy backends
 
-`curl checkout.shop:8080` times out. The pods are Running. Fix the Service so it serves traffic, and add a TCP readiness probe on the app port.
+Running `curl checkout.shop:8080` times out, even though the pods are Running. Fix the Service so that it serves traffic again, and then add a TCP readiness probe on the app port.
 
 <details><summary>Solution</summary>
 
@@ -126,32 +126,32 @@ kubectl -n shop get svc checkout -o yaml | yq '.spec.selector, .spec.ports'
 kubectl -n shop get pods --show-labels
 kubectl -n shop exec deploy/checkout -- ss -lnt
 ```
-Fix whatever does not line up (selector vs labels, `targetPort` vs the real listening port), then add:
+Compare the output and fix whatever does not match, for example a selector that does not match the pod labels, or a `targetPort` that differs from the port the app really listens on. Then add the probe:
 ```yaml
 readinessProbe:
   tcpSocket:
     port: 8080
   periodSeconds: 5
 ```
-Endpoints must show `ready: true`.
+When you are done, the endpoints must show `ready: true`.
 </details>
 
 ### Task 8: Point a Service at an external database
 
-Create a Service `legacy-db` in namespace `apps` on port 5432 that sends traffic to `192.168.10.50:5432`.
+Create a Service `legacy-db` in namespace `apps` on port 5432, and make it send traffic to `192.168.10.50:5432`, which is outside the cluster.
 
 <details><summary>Solution</summary>
 
-Create a selectorless Service with a named port `pg`, plus an EndpointSlice labelled `kubernetes.io/service-name: legacy-db` with the same port name and the address `192.168.10.50`. See Domain 2, section 3.
+Because the backend is not a pod, create a Service without a selector and give it a named port `pg`. Then create an EndpointSlice labelled `kubernetes.io/service-name: legacy-db`, which links it to the Service, with the same port name and the address `192.168.10.50`. See Domain 2, section 3 for the full example.
 </details>
 
 ### Task 9: Gateway API path routing
 
-In namespace `web`, using GatewayClass `eg`, create Gateway `web-gw` with an HTTP listener on port 80 for `shop.example.com`. Route `/api` to Service `api:8080` and everything else to `frontend:80`.
+In namespace `web`, use GatewayClass `eg` to create Gateway `web-gw` with an HTTP listener on port 80 for `shop.example.com`. Requests to `/api` must go to Service `api:8080`, and all other requests must go to `frontend:80`.
 
 <details><summary>Solution</summary>
 
-Create one Gateway and one HTTPRoute with two rules: `PathPrefix /api` → `api:8080` and `PathPrefix /` → `frontend:80`. Verify:
+Create one Gateway and one HTTPRoute that has two rules: `PathPrefix /api` sends traffic to `api:8080`, and `PathPrefix /` sends everything else to `frontend:80`. The more specific `/api` prefix wins for API requests. Then verify the setup:
 ```bash
 kubectl -n web describe httproute
 curl -s --resolve shop.example.com:80:$GW_IP http://shop.example.com/api
@@ -164,23 +164,23 @@ curl -s --resolve shop.example.com:80:$GW_IP http://shop.example.com/api
 
 ### Task 10: Inference routing
 
-Model-server pods labelled `app=vllm-llama` in namespace `inference` listen on port 8000, and an endpoint picker Service `llama-epp` listens on 9002. Create InferencePool `llama-pool` and route `POST /v1/completions` on Gateway `inference-gw` to it.
+In namespace `inference`, the model-server pods are labelled `app=vllm-llama` and listen on port 8000, and an endpoint picker Service called `llama-epp` listens on port 9002. Create InferencePool `llama-pool`, and then route `POST /v1/completions` on Gateway `inference-gw` to that pool.
 
 <details><summary>Solution</summary>
 
 ```bash
 kubectl explain inferencepool.spec
 ```
-Create the InferencePool (`selector.matchLabels.app: vllm-llama`, `targetPorts: [{number: 8000}]`, `endpointPickerRef: {name: llama-epp, port: {number: 9002}}`). Then create an HTTPRoute with a match on `method: POST` and `PathPrefix /v1/completions` whose backendRef has `group: inference.networking.k8s.io`, `kind: InferencePool`, `name: llama-pool`. Check that the route shows `ResolvedRefs=True`, and send a test completion.
+First create the InferencePool with `selector.matchLabels.app: vllm-llama`, `targetPorts: [{number: 8000}]` and `endpointPickerRef: {name: llama-epp, port: {number: 9002}}`. Next, create an HTTPRoute that matches `method: POST` and `PathPrefix /v1/completions`, and whose backendRef points to the pool with `group: inference.networking.k8s.io`, `kind: InferencePool` and `name: llama-pool`. Finally, check that the route shows `ResolvedRefs=True`, and send a test completion to confirm that it works end to end.
 </details>
 
 ### Task 11: BGP peering
 
-Nodes labelled `bgp=enabled` must peer from ASN 65001 with router `172.18.0.100` (ASN 65000) and advertise their pod CIDRs and all LoadBalancer IPs.
+Nodes labelled `bgp=enabled` must use ASN 65001 to peer with router `172.18.0.100` (ASN 65000). Over that session, they must advertise their pod CIDRs and all LoadBalancer IPs.
 
 <details><summary>Solution</summary>
 
-Enable `bgpControlPlane.enabled=true`. Create a `CiliumBGPClusterConfig` (nodeSelector `bgp=enabled`, localASN 65001, peer 172.18.0.100 / 65000), a `CiliumBGPPeerConfig` selecting advertisements by label, and a `CiliumBGPAdvertisement` with `PodCIDR` and `Service` → `LoadBalancerIP`. A Service advertisement only covers Services matching its `selector`, so to advertise all of them add `matchExpressions: [{key: bgp-exclude, operator: DoesNotExist}]` (or a `NotIn` with a never-used value).
+Start by enabling `bgpControlPlane.enabled=true`. Then create three resources: a `CiliumBGPClusterConfig` (nodeSelector `bgp=enabled`, localASN 65001, peer 172.18.0.100 / 65000), a `CiliumBGPPeerConfig` that selects advertisements by label, and a `CiliumBGPAdvertisement` with `PodCIDR` and `Service` → `LoadBalancerIP`. Keep in mind that a Service advertisement only covers the Services that match its `selector`. So, to advertise all of them, add `matchExpressions: [{key: bgp-exclude, operator: DoesNotExist}]` (or a `NotIn` with a value that is never used), which every Service matches.
 ```bash
 cilium bgp peers
 cilium bgp routes advertised ipv4 unicast
@@ -189,14 +189,14 @@ cilium bgp routes advertised ipv4 unicast
 
 ### Task 12: Predictable source IP
 
-Pods with `app=billing` in namespace `payments` call `203.0.113.0/24`. The partner only accepts traffic from `172.18.0.50`, which is configured on node `worker-3`. Make it work.
+Pods with `app=billing` in namespace `payments` call `203.0.113.0/24`. However, the partner only accepts traffic from `172.18.0.50`, and that address is configured on node `worker-3`. Make the traffic leave from that IP so that the calls work.
 
 <details><summary>Solution</summary>
 
 ```bash
 kubectl label node worker-3 egress-gw=true
 ```
-Make sure `egressGateway.enabled`, `bpf.masquerade` and `kubeProxyReplacement` are on. Create a `CiliumEgressGatewayPolicy` selecting `app=billing` + `io.kubernetes.pod.namespace=payments`, with `destinationCIDRs: [203.0.113.0/24]`, `nodeSelector egress-gw=true` and `egressIP: 172.18.0.50`.
+Make sure that `egressGateway.enabled`, `bpf.masquerade` and `kubeProxyReplacement` are all turned on, because the egress gateway needs them. Then create a `CiliumEgressGatewayPolicy` that selects `app=billing` + `io.kubernetes.pod.namespace=payments`, with `destinationCIDRs: [203.0.113.0/24]`, `nodeSelector egress-gw=true` and `egressIP: 172.18.0.50`.
 ```bash
 kubectl -n kube-system exec ds/cilium -- cilium-dbg bpf egress list
 ```
@@ -204,11 +204,11 @@ kubectl -n kube-system exec ds/cilium -- cilium-dbg bpf egress list
 
 ### Task 13: Cross-cluster backend
 
-Clusters `c1` and `c2` are already joined in a Cluster Mesh. Deployment `backend` runs only in `c2` (namespace `shop`). Make `client` in `c1` reach it at `backend.shop`.
+Clusters `c1` and `c2` are already joined in a Cluster Mesh. Deployment `backend` runs only in `c2`, in namespace `shop`. Make it possible for `client` in `c1` to reach it at `backend.shop`.
 
 <details><summary>Solution</summary>
 
-Create Service `backend` in namespace `shop` in **both** clusters with the annotation `service.cilium.io/global: "true"`. Its selector can match nothing in `c1`. Test with `kubectl --context c1 -n shop exec deploy/client -- curl -s backend`. If it fails, check `cilium clustermesh status`.
+Create Service `backend` in namespace `shop` in **both** clusters, and give it the annotation `service.cilium.io/global: "true"` so that Cilium merges the backends from both clusters. In `c1` the selector can match nothing, because the real pods live in `c2`. Test the result with `kubectl --context c1 -n shop exec deploy/client -- curl -s backend`, and if it fails, check `cilium clustermesh status`.
 </details>
 
 ---
@@ -217,20 +217,20 @@ Create Service `backend` in namespace `shop` in **both** clusters with the annot
 
 ### Task 14: Lock down a namespace
 
-In namespace `shop`: deny all ingress and egress by default. Allow `frontend` → `api` on TCP 8080, and allow DNS for all pods.
+In namespace `shop`, deny all ingress and egress traffic by default. Then allow `frontend` to reach `api` on TCP 8080, and allow DNS for all pods.
 
 <details><summary>Solution</summary>
 
-Create a default-deny NetworkPolicy (`podSelector: {}`, both policyTypes), an egress policy for all pods to `kube-system`/`k8s-app=kube-dns` on UDP+TCP 53, an ingress policy on `api` from `app=frontend` on 8080, and an egress policy on `frontend` to `app=api` on 8080. Test both the allowed path and a denied one.
+You need four NetworkPolicies. First, create a default-deny policy (`podSelector: {}` with both policyTypes). Second, because the default deny also blocks name lookups, add an egress policy that lets all pods reach `kube-system`/`k8s-app=kube-dns` on UDP+TCP 53. Third, add an ingress policy on `api` that allows `app=frontend` on 8080. Fourth, add an egress policy on `frontend` that allows traffic to `app=api` on 8080, since both sides of the connection must be allowed. Finally, test both a path that should work and one that should be denied.
 </details>
 
 ### Task 15: L7 allow-list
 
-`frontend` may only call `GET /products` and `GET /products/*` on `api:8080`. All other requests must be rejected with HTTP 403.
+`frontend` may only call `GET /products` and `GET /products/*` on `api:8080`. Any other request must be rejected with HTTP 403.
 
 <details><summary>Solution</summary>
 
-Create a CiliumNetworkPolicy on `app=api` with `fromEndpoints app=frontend`, `toPorts 8080`, `rules.http: [{method: GET, path: "/products(/.*)?"}]`.
+Create a CiliumNetworkPolicy on `app=api` with `fromEndpoints app=frontend`, `toPorts 8080` and `rules.http: [{method: GET, path: "/products(/.*)?"}]`. The path is a regular expression, so this one rule covers both `/products` and everything under it. To test it, call a path that is not allowed and check that you get 403:
 ```bash
 kubectl -n shop exec deploy/frontend -- curl -s -o /dev/null -w '%{http_code}' api:8080/admin
 ```
@@ -238,7 +238,7 @@ kubectl -n shop exec deploy/frontend -- curl -s -o /dev/null -w '%{http_code}' a
 
 ### Task 16: Encrypt node-to-node traffic
 
-Enable WireGuard encryption for pod traffic between nodes and prove it is active.
+Turn on WireGuard encryption for pod traffic between nodes, and then prove that it is active.
 
 <details><summary>Solution</summary>
 
@@ -251,14 +251,14 @@ kubectl -n kube-system exec ds/cilium -- cilium-dbg status | grep Encryption
 
 ### Task 17: HTTPS on a Gateway
 
-The cert and key are at `/opt/certs/shop.crt` and `/opt/certs/shop.key`. Serve `https://shop.example.com` from Gateway `web-gw` (namespace `web`) on port 443.
+The certificate and key are at `/opt/certs/shop.crt` and `/opt/certs/shop.key`. Use them to serve `https://shop.example.com` from Gateway `web-gw` (namespace `web`) on port 443.
 
 <details><summary>Solution</summary>
 
 ```bash
 kubectl -n web create secret tls shop-tls --cert=/opt/certs/shop.crt --key=/opt/certs/shop.key
 ```
-Add an `HTTPS` listener (port 443, hostname `shop.example.com`, `tls.mode: Terminate`, `certificateRefs: [{name: shop-tls}]`) and attach the HTTPRoute to it with `sectionName`.
+Next, add an `HTTPS` listener to the Gateway (port 443, hostname `shop.example.com`, `tls.mode: Terminate`, `certificateRefs: [{name: shop-tls}]`), and attach the HTTPRoute to that listener with `sectionName`. Then test it:
 ```bash
 curl -v --cacert /opt/certs/shop.crt --resolve shop.example.com:443:$GW_IP https://shop.example.com/
 ```
@@ -266,15 +266,15 @@ curl -v --cacert /opt/certs/shop.crt --resolve shop.example.com:443:$GW_IP https
 
 ### Task 18: Mesh-only access with endpoint restriction
 
-Namespace `bank` is in Istio ambient mode. Non-mesh pods must not reach any `bank` service. Within the mesh, only ServiceAccount `teller` in `bank` may call `POST /transfer` on Service `ledger`.
+Namespace `bank` runs in Istio ambient mode. Pods that are not in the mesh must not be able to reach any `bank` service. Inside the mesh, only ServiceAccount `teller` in `bank` may call `POST /transfer` on Service `ledger`.
 
 <details><summary>Solution</summary>
 
-1. `PeerAuthentication` `mtls.mode: STRICT` in `bank`.
-2. `istioctl waypoint apply -n bank --enroll-namespace --wait`
-3. `AuthorizationPolicy` with `targetRefs: [{kind: Service, group: "", name: ledger}]`, ALLOW, principal `cluster.local/ns/bank/sa/teller`, `methods: [POST]`, `paths: [/transfer]`.
+1. Create a `PeerAuthentication` with `mtls.mode: STRICT` in `bank`, so that plain-text traffic from non-mesh pods is refused.
+2. Deploy a waypoint, which is needed to enforce L7 rules such as methods and paths: `istioctl waypoint apply -n bank --enroll-namespace --wait`
+3. Create an `AuthorizationPolicy` with `targetRefs: [{kind: Service, group: "", name: ledger}]` and action ALLOW, for principal `cluster.local/ns/bank/sa/teller`, `methods: [POST]` and `paths: [/transfer]`.
 
-Expect a reset from non-mesh clients and `RBAC: access denied` for the wrong identity or path.
+If everything is correct, clients outside the mesh get a connection reset, and a request with the wrong identity or path gets `RBAC: access denied`.
 </details>
 
 ---
@@ -283,7 +283,7 @@ Expect a reset from non-mesh clients and `RBAC: access denied` for the wrong ide
 
 ### Task 19: Who is hammering the login endpoint?
 
-The Gateway `web-gw` sees many failing requests to `/api/login`. Find the user agent responsible and write it to `/opt/answers/agent.txt`.
+Gateway `web-gw` is receiving many failing requests to `/api/login`. Find the user agent that is sending them, and write it to `/opt/answers/agent.txt`.
 
 <details><summary>Solution</summary>
 
@@ -298,7 +298,7 @@ echo '<agent>' > /opt/answers/agent.txt
 
 ### Task 20: Find the failing backend
 
-Requests to Service `orders` intermittently return 503. Using Hubble and Prometheus, find which pod is responsible and fix it.
+Requests to Service `orders` sometimes return 503. Use Hubble and Prometheus to find the pod that causes the errors, and then fix it.
 
 <details><summary>Solution</summary>
 
@@ -310,5 +310,5 @@ hubble observe --to-service <ns>/orders --verdict DROPPED
 hubble observe --protocol http --http-status 5+ --to-label app=orders
 kubectl get endpointslices -l kubernetes.io/service-name=orders -o wide
 ```
-Istio metrics narrow it to the workload. Hubble flows and the EndpointSlice narrow it to the pod. One pod stands out. Check its probes, logs and node, then fix the root cause (for example, a wrong readiness port or a crashing container).
+The Istio metrics tell you which workload is failing, and then the Hubble flows and the EndpointSlice narrow it down to a single pod. Once one pod stands out, check its probes, logs and node, and fix the root cause, for example a wrong readiness port or a crashing container.
 </details>
