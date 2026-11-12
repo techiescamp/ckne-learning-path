@@ -915,7 +915,7 @@ kubectl apply -f svc.yaml
 
 | Action | Shortcut |
 |--------|----------|
-| Close tab (Chrome) | `Ctrl+Alt+W` (**NOT** `Ctrl+W`) |
+| Close tab (Firefox) | `Ctrl+Alt+W` (**NOT** `Ctrl+W`) |
 | Copy (terminal) | `Ctrl+Shift+C` |
 | Paste (terminal) | `Ctrl+Shift+V` |
 | Find in Firefox | `Ctrl+F` |
