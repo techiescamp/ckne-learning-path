@@ -55,8 +55,8 @@ The same code, **40KUBE26CT**, also saves you up to 47% on the following bundles
 |:----:|--------|:------:|:-----------:|-------------------------------------------|
 | 1 | Core Infrastructure and CNI | **15%** | [Notes](./study-notes/01-core-infrastructure-cni.md) | Install Cilium with kube-proxy replacement and BPF masquerading, add extra pod interfaces with Multus, and debug pod-to-pod traffic and DNS using `ip`, `iptables` and `tcpdump` |
 | 2 | Service Networking and DNS | **25%** | [Notes](./study-notes/02-service-networking-dns.md) | Expose apps with L4 Services, MetalLB and kube-router, customise CoreDNS, fix broken endpoints and probes, and route HTTP traffic with Gateway API and Envoy Gateway |
-| 3 | Network Security and Policy | **25%** | [Notes](./study-notes/04-network-security-policy.md) | Write Kubernetes and Cilium L3/L4/L7 policies, enable WireGuard, terminate TLS on a Gateway, and secure workloads with Istio ambient |
-| 4 | Advanced Traffic Management | **20%** | [Notes](./study-notes/03-advanced-traffic-management.md) | Peer with a router over BGP, pin egress traffic to a gateway node, connect two clusters with Cluster Mesh, and route inference traffic with an InferencePool |
+| 3 | Advanced Traffic Management | **20%** | [Notes](./study-notes/03-advanced-traffic-management.md) | Peer with a router over BGP, pin egress traffic to a gateway node, connect two clusters with Cluster Mesh, and route inference traffic with an InferencePool |
+| 4 | Network Security and Policy | **25%** | [Notes](./study-notes/04-network-security-policy.md) | Write Kubernetes and Cilium L3/L4/L7 policies, enable WireGuard, terminate TLS on a Gateway, and secure workloads with Istio ambient |
 | 5 | Observability | **15%** | [Notes](./study-notes/05-observability.md) | Use Hubble to find drops, Prometheus to find failing backends, Jaeger to find slow hops, and Envoy access logs to find bad clients |
 | 6 | Review | – | – | Solve the practice tasks under time pressure, and only then use your Killer.sh sessions |
 
