@@ -12,8 +12,6 @@ This is a structured, hands-on learning path for the **Certified Kubernetes Netw
 ## Hit the Star! :star:
 If you plan to use this repo as a reference, please hit the star so that others can find it too. Thanks!
 
----
-
 <a id="exam-coupon"></a>
 
 ## CKNE Exam Coupon (30% Off Exclusive Discount)
@@ -22,14 +20,12 @@ You can save a flat 30% on CKNE exam registration by using the following coupon 
 > [!IMPORTANT]
 > **Coupon:** Use code **DCUBE30** at [kube.promo/ckne](https://kube.promo/recommends/ckne/)
 
-The same code, **DCUBE30**, also saves you up to 47% on the following bundles:
+The same code, **DCUBE30**, also saves you up to 35% on the following bundles:
 
 - CKA + CKAD: [kube.promo/cka-ckad](https://kube.promo/cka-ckad)
 - CKA + CKS Bundle: [kube.promo/bundle](https://kube.promo/bundle)
 - CKA + CKAD + CKS Exam bundle: [kube.promo/k8s-bundle](https://kube.promo/k8s-bundle)
 - KCNA + KCSA + CKA + CKAD + CKS: [kube.promo/kubestronaut](https://kube.promo/kubestronaut)
----
-
 
 ## About the Exam
 
@@ -63,8 +59,6 @@ The same code, **DCUBE30**, also saves you up to 47% on the following bundles:
 > [!TIP]
 > **Service Networking (25%)** and **Network Security (25%)** make up half the exam together. So plan most of your study time around them. Troubleshooting also shows up in every domain. So for each feature you build, practise breaking it and then fixing it.
 
----
-
 ## 📚 CKNE Exam Detailed Study Guide
 
 ### [Core Infrastructure and CNI](#1-core-infrastructure-and-cni-15) `15%`
@@ -77,8 +71,6 @@ The same code, **DCUBE30**, also saves you up to 47% on the following bundles:
 | 4 | 🔗 [Troubleshooting Pod connectivity](#troubleshooting-pod-connectivity) |
 | 5 | 🧩 [Configuring multi-interface Pods](#configuring-multi-interface-pods) |
 
----
-
 ### [Service Networking and DNS](#2-service-networking-and-dns-25) `25%`
 
 | # | Topic |
@@ -90,8 +82,6 @@ The same code, **DCUBE30**, also saves you up to 47% on the following bundles:
 | 5 | 🚪 [Managing traffic with the Gateway API](#managing-traffic-with-the-gateway-api) |
 | 6 | 🌐 [Troubleshooting Service network traffic](#troubleshooting-service-network-traffic) |
 
----
-
 ### [Advanced Traffic Management](#3-advanced-traffic-management-20) `20%`
 
 | # | Topic |
@@ -100,8 +90,6 @@ The same code, **DCUBE30**, also saves you up to 47% on the following bundles:
 | 2 | 🛣️ [Implementing routing to expose networks](#implementing-routing-to-expose-networks) |
 | 3 | 🚀 [Configuring egress gateways for cluster exit traffic](#configuring-egress-gateways-for-cluster-exit-traffic) |
 | 4 | 🌍 [Implementing cross-cluster service discovery and load balancing](#implementing-cross-cluster-service-discovery-and-load-balancing) |
-
----
 
 ### [Network Security and Policy](#4-network-security-and-policy-25) `25%`
 
@@ -112,8 +100,6 @@ The same code, **DCUBE30**, also saves you up to 47% on the following bundles:
 | 3 | 📜 [Managing TLS certificates for Gateway API](#managing-tls-certificates-for-gateway-api) |
 | 4 | 🪪 [Implementing Pod-level authentication and authorization](#implementing-pod-level-authentication-and-authorization) |
 
----
-
 ### [Observability](#5-observability-15) `15%`
 
 | # | Topic |
@@ -121,8 +107,6 @@ The same code, **DCUBE30**, also saves you up to 47% on the following bundles:
 | 1 | 📊 [Analyzing network health using metrics](#analyzing-network-health-using-metrics) |
 | 2 | ⏱️ [Troubleshooting end-to-end network performance with tracing](#troubleshooting-end-to-end-network-performance-with-tracing) |
 | 3 | 📋 [Auditing traffic with logs](#auditing-traffic-with-logs) |
-
----
 
 ## 1. Core Infrastructure and CNI (15%)
 
