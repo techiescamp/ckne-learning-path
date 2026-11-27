@@ -14,7 +14,7 @@ If you plan to use this repo as a reference, please hit the star so that others 
 
 <a id="exam-coupon"></a>
 
-## CKNE, CKA, CKAD... Exam Coupon (50% Off - Ends Soon)
+## [50% OFF] CKNE, CKA, CKAD...Exams (Ends Soon)
 
 Save a flat 50% on CKNE and other k8s certs with the following coupon code.
 > [!IMPORTANT]
