@@ -14,20 +14,22 @@ If you plan to use this repo as a reference, please hit the star so that others 
 
 <a id="exam-coupon"></a>
 
-## CKNE Exam Coupon (50% Off - Few Days Only)
+## CKNE, CKA, CKAD... Exam Coupon (50% Off - Ends Soon)
 
-Save a flat 50% on CKNE exam registration with the following coupon code.
+Save a flat 50% on CKNE and other k8s certs with the following coupon code.
 > [!IMPORTANT]
 > **Coupon:** Use code **BFCM26CCCT** at [kube.promo/ckne](https://kube.promo/recommends/ckne/)
 
-The same code, **BFCM26CCCT**, also saves you up to 60% on the following bundles:
+Using code, **BFCM26BUNCT**, you can save up to 60% on the following k8s bundles:
 
 - CKA + CKAD: [kube.promo/cka-ckad](https://kube.promo/cka-ckad)
 - CKA + CKS Bundle: [kube.promo/bundle](https://kube.promo/bundle)
 - CKA + CKAD + CKS Exam bundle: [kube.promo/k8s-bundle](https://kube.promo/k8s-bundle)
-- KCNA + KCSA + CKA + CKAD + CKS: [kube.promo/kubestronaut](https://kube.promo/kubestronaut)
 
-## About the Exam
+> [!IMPORTANT]
+> Check out all the cyber monday deals here: [kube.promo/cybermonday](https://kube.promo/deals/linux-foundation-cyber-monday/)
+
+## About the CKNE Exam
 
 | Item | Detail |
 |------|--------|
